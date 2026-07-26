@@ -1,5 +1,5 @@
 // ============================================================================
-// HeartCount Relationship OS — app.js
+// FollowUp OS — app.js
 // Ported from _extracted/component-script.js (Component extends DCLogic)
 // Stage 1 scope: shell, Home, Follow-ups (inbox), Post-meeting, Sent, Dismissed
 // Settings + Thread are placeholder screens for now.
@@ -272,6 +272,11 @@ Object.assign(DRAFTS, FU_DRAFTS, MEET_DRAFTS);
 // STATE
 // ---------------------------------------------------------------------------
 
+// The user-chosen default mailbox — Follow-ups/Post-meeting/Sent/Dismissed
+// filter to this mailbox until the user manually picks a different filter.
+// Changeable in Settings via the "Set as default" action on a mailbox row.
+const DEFAULT_MAILBOX = "ellen@heartcount.com";
+
 const state = {
   view: "home",
   fuAging: false,
@@ -291,10 +296,11 @@ const state = {
   sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true },
   dismissedIds: ["x1", "x2"],
   inboxOpen: true,
-  activeMailbox: "ellen@heartcount.com",
+  activeMailbox: DEFAULT_MAILBOX,
   activeNav: "inbox",
   openFilter: null,
-  filterVals: { priority: null, mailbox: "ellen@heartcount.com", date: null, sender: null },
+  defaultMailbox: DEFAULT_MAILBOX,
+  filterVals: { priority: null, mailbox: DEFAULT_MAILBOX, date: null, sender: null },
   spin: 0,
   scanned: "2 min ago",
   mcpTokenVisible: false
@@ -571,19 +577,6 @@ function renderVals() {
     lastScanned: s.scanned,
     spin: s.spin,
 
-    mailboxes: MAILBOXES.map(m => {
-      const on = s.activeMailbox === m.address && s.activeNav === "inbox";
-      return {
-        address: m.address,
-        count: m.count > 0 ? String(m.count) : "",
-        dot: m.dot,
-        bg: on ? "#f7f8fa" : "transparent",
-        color: on ? "#13161c" : "#5d6470",
-        weight: on ? "700" : "500",
-        countColor: m.count > 0 ? "#5d6470" : "#c3c8d1"
-      };
-    }),
-
     navItems: [
       { key: "meetings", icon: "ti-microphone-2", label: "Post meeting", meta: String(MEETINGS.filter(live).length),
         badge: MEETINGS.filter(m => live(m) && (m.pendingHours || 0) >= 48 && m.state !== "waiting").length },
@@ -618,7 +611,8 @@ function renderVals() {
         on: on,
         switchBg: on ? "#13161c" : "#e1e4e9",
         knobLeft: on ? "17px" : "3px",
-        switchLabel: on ? "Scanning" : "Paused"
+        switchLabel: on ? "Scanning" : "Paused",
+        isDefault: m.address === s.defaultMailbox
       };
     }),
     mailboxTotal: MAILBOXES.length,
@@ -875,8 +869,8 @@ root.innerHTML = `
       <i class="ti ti-heart-filled" style="font-size:17px;color:#fff"></i>
     </div>
     <div style="line-height:1.05">
-      <div style="font-size:14.5px;font-weight:800;letter-spacing:-.2px">HeartCount</div>
-      <div style="font-size:11px;font-weight:600;color:#9aa1ac;letter-spacing:.02em">Relationship OS</div>
+      <div style="font-size:14.5px;font-weight:800;letter-spacing:-.2px">FollowUp</div>
+      <div style="font-size:11px;font-weight:600;color:#9aa1ac;letter-spacing:.02em">OS</div>
     </div>
     <button id="closeDrawerBtn" data-action="closeDrawer" aria-label="Close menu" class="hidden hover-close-drawer" style="margin-left:auto;width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:11px;background:#fff;cursor:pointer">
       <i class="ti ti-x" style="font-size:17px;color:#40464f"></i>
@@ -906,7 +900,6 @@ root.innerHTML = `
       <span id="followTotal" style="font-size:11px;font-weight:600;color:#a7adb8"></span>
     </button>
 
-    <div id="mailboxNavList"></div>
     <div id="navItemsList"></div>
   </nav>
 
@@ -930,7 +923,7 @@ root.innerHTML = `
       </button>
       <div id="mobileLogo" class="hidden" style="display:flex;align-items:center;gap:9px;flex:none;white-space:nowrap">
         <div style="width:30px;height:30px;flex:none;border-radius:10px;background:linear-gradient(135deg,#0b8ee8 0%,#7f9ec4 52%,#f08a20 100%);display:flex;align-items:center;justify-content:center"><i class="ti ti-heart-filled" style="font-size:15px;color:#fff"></i></div>
-        <span style="font-size:14px;font-weight:800;letter-spacing:-.2px">Relationship OS</span>
+        <span style="font-size:14px;font-weight:800;letter-spacing:-.2px">FollowUp OS</span>
       </div>
       <div id="searchWrap" style="min-width:0;position:relative;display:flex;align-items:center;background:#f4f6f8;border:1px solid #eceef1;border-radius:999px;padding:0 14px;height:42px">
         <i class="ti ti-search" style="font-size:16px;color:#9aa1ac;margin-right:9px"></i>
@@ -1008,15 +1001,6 @@ function renderShell(v) {
   document.getElementById("navInbox").style.background = v.inboxBg;
   document.getElementById("navInboxIcon").style.color = v.inboxIconColor;
   document.getElementById("followTotal").textContent = v.followTotal;
-
-  // ----- mailbox list in sidebar -----
-  document.getElementById("mailboxNavList").innerHTML = v.mailboxes.map(m => `
-    <button data-action="selectMailbox" data-mailbox="${esc(m.address)}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;background:${m.bg};border-radius:11px;cursor:pointer;text-align:left" class="hover-sidebar-item">
-      <span style="width:7px;height:7px;border-radius:999px;background:${m.dot};margin-left:8px;flex:none"></span>
-      <span style="font-size:12.5px;font-weight:${m.weight};color:${m.color};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.address)}</span>
-      <span style="font-size:11px;font-weight:600;color:${m.countColor}">${esc(m.count)}</span>
-    </button>
-  `).join("");
 
   // ----- nav items (meetings/sent/dismissed/settings) -----
   document.getElementById("navItemsList").innerHTML = v.navItems.map(n => `
@@ -1827,6 +1811,9 @@ function mailboxRowHtml(mb) {
       <div style="flex:1;min-width:190px">
         <p style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.1px">${esc(mb.address)}</p>
         <p style="margin:2px 0 0;font-size:11.5px;font-weight:500;color:#9aa1ac">${esc(mb.role)} · ${esc(mb.sync)}</p>
+        ${mb.isDefault
+          ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;font-weight:700;color:#0b6fb8;background:#f1f7fd;border-radius:999px;padding:2px 8px"><i class="ti ti-star-filled" style="font-size:10px"></i>Default mailbox</span>`
+          : `<button data-action="setDefaultMailbox" data-address="${esc(mb.address)}" class="hover-restore" style="margin-top:5px;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:10.5px;font-weight:700;color:#5d6470;cursor:pointer"><i class="ti ti-star" style="font-size:11px;color:#9aa1ac"></i>Set as default</button>`}
       </div>
       <span style="display:inline-flex;align-items:center;gap:6px;flex:none;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${mb.stBg};color:${mb.stColor}">
         <i class="ti ${mb.stIcon}" style="font-size:13px"></i>${esc(mb.stLabel)}</span>
@@ -2007,15 +1994,6 @@ document.addEventListener("click", (e) => {
       renderAll();
       break;
 
-    case "selectMailbox":
-      state.activeMailbox = el.dataset.mailbox;
-      state.activeNav = "inbox";
-      state.view = "inbox";
-      state.drawer = false;
-      state.openId = null;
-      renderAll();
-      break;
-
     case "navTo":
       state.activeNav = el.dataset.view;
       state.view = el.dataset.view;
@@ -2041,7 +2019,7 @@ document.addEventListener("click", (e) => {
       break;
 
     case "clearFilters":
-      state.filterVals = { priority: null, mailbox: "ellen@heartcount.com", date: null, sender: null };
+      state.filterVals = { priority: null, mailbox: state.defaultMailbox, date: null, sender: null };
       state.openFilter = null;
       state.fuAging = false;
       renderAll();
@@ -2173,6 +2151,16 @@ document.addEventListener("click", (e) => {
       flash("Google account picker opened — connect another mailbox");
       renderAll();
       break;
+
+    case "setDefaultMailbox": {
+      const address = el.dataset.address;
+      state.defaultMailbox = address;
+      state.activeMailbox = address;
+      state.filterVals = Object.assign({}, state.filterVals, { mailbox: address });
+      flash(address + " set as your default mailbox");
+      renderAll();
+      break;
+    }
 
     // ---------- Settings: AI assistant connectors ----------
     case "copyMcpUrl": {

@@ -1,4 +1,4 @@
-# HeartCount Relationship OS
+# FollowUp OS
 
 A relationship/inbox-management dashboard: scans connected Gmail inboxes, classifies
 threads into Needs-reply / Low-confidence / Needs-follow-up, drafts two AI reply

@@ -1,4 +1,4 @@
-# PRD — HeartCount Relationship OS (working title)
+# PRD — FollowUp OS
 
 ## Problem
 
@@ -43,7 +43,7 @@ A prototype of phase 1 was built and heavily iterated live inside a Claude Code 
 - This is explicitly out of scope for the initial build — plan the data model so it isn't precluded later (e.g. store enough structured metadata per contact/thread that a future HubSpot sync can hook into it), but don't build the HubSpot integration itself yet.
 
 ### AI assistant connector — MCP server (added 2026-07-25, immediate priority)
-Separate from the app's own inbound Gmail/Calendar API integration (see Suggested architecture — that stays direct API, not MCP), the app itself should expose its **own** MCP server so external AI assistants can query it directly. Ellen's use case: open Claude (the assistant, not this app) and ask something like "did I reply to X about Y," with Claude able to reach into the HeartCount dashboard's data rather than Ellen having to open the app itself.
+Separate from the app's own inbound Gmail/Calendar API integration (see Suggested architecture — that stays direct API, not MCP), the app itself should expose its **own** MCP server so external AI assistants can query it directly. Ellen's use case: open Claude (the assistant, not this app) and ask something like "did I reply to X about Y," with Claude able to reach into the FollowUp OS dashboard's data rather than Ellen having to open the app itself.
 - **v1 (build now, alongside/after the initial scaffold — do not wait for Claude Design):** Claude/Anthropic connector only. Expose read/search tools (e.g. list needs-reply threads, search mailbox history, get a thread's draft options) via a remote MCP endpoint that Ellen can add as a custom connector in Claude Desktop/claude.ai.
 - **Later, bundled with Phase 4 (HubSpot):** broaden to other AI assistants (ChatGPT, Gemini, Perplexity) as their connector ecosystems support it. Also later: connectors for other transcript/recording tools beyond Otter/Optiverse (Loom, Granola, ElevenLabs, Google's notetaker) as optional, user-configurable integrations for Phase 3.
 - **UI footprint is small and not design-heavy:** a "Connectors" section within Settings, reusing the same card/status-pill pattern already established for mailbox connections — showing connection status, the MCP server URL, and any auth token. Build this directly in code during the backend-layering step; it doesn't need its own Claude Design mockup pass unless a quick visual-consistency check turns out to be useful.

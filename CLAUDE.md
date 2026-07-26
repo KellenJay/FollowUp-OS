@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo is the HeartCount Relationship OS — see `PRD.md` for the full spec and `SKILLS.md` for a quick index of what each module does. Read both before making product decisions; this file is just working conventions.
+This repo is FollowUp OS — see `PRD.md` for the full spec and `SKILLS.md` for a quick index of what each module does. Read both before making product decisions; this file is just working conventions.
 
 ## Build order
 
