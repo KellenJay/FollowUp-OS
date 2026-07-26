@@ -1,0 +1,162 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;">Inbox triage dashboard with needs-reply, low-confidence, dismissed, and sent sections, feedback controls preserved after sending</h2>
+
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1rem;">
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0;">HeartCount inbox &middot; phase 1 of 3</p>
+  <p style="font-size:13px;color:var(--color-text-tertiary);margin:0;">refreshed just now</p>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:0.75rem;">
+  <input type="text" id="mail-search" placeholder="Search your mailbox or ask a question..." style="flex:1;">
+  <button onclick="const v=document.getElementById('mail-search').value; if(v.trim()) sendPrompt('SEARCH_MAIL | query:' + v)" style="width:auto;padding:0 14px;">Search</button>
+  <button onclick="sendPrompt('REFRESH_INBOX')" style="width:auto;padding:0 14px;"><i class="ti ti-refresh" style="font-size:14px;vertical-align:-2px;margin-right:4px;" aria-hidden="true"></i>Refresh</button>
+</div>
+
+<div style="border:0.5px solid var(--color-border-tertiary);background:var(--color-background-warning);border-radius:var(--border-radius-lg);padding:0.85rem 1.1rem;margin-bottom:1.5rem;display:flex;gap:10px;align-items:flex-start;">
+  <i class="ti ti-alert-triangle" style="font-size:18px;color:var(--color-text-warning);margin-top:1px;" aria-hidden="true"></i>
+  <div>
+    <p style="font-size:14px;font-weight:500;margin:0 0 2px;color:var(--color-text-warning);">ALERT_TITLE</p>
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0;">ALERT_BODY</p>
+  </div>
+</div>
+
+<p style="font-size:16px;font-weight:500;margin:0 0 0.75rem;">Needs your reply</p>
+
+<div id="card-THREAD_ID" style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    <div>
+      <p style="font-weight:500;font-size:15px;margin:0;">SENDER_NAME</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:2px 0 0;">SUBJECT</p>
+    </div>
+    <span style="font-size:12px;padding:3px 10px;border-radius:var(--border-radius-md);background:var(--color-background-info);color:var(--color-text-info);white-space:nowrap;">PRIORITY_TAG</span>
+  </div>
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 8px;">CONTEXT_SUMMARY</p>
+
+  <div style="display:flex;gap:14px;margin-bottom:10px;align-items:center;">
+    <button onclick="toggleBody('THREAD_ID')" style="width:auto;padding:4px 10px;font-size:12px;"><i class="ti ti-eye" style="font-size:14px;vertical-align:-2px;margin-right:4px;" aria-hidden="true"></i>View email</button>
+    <a href="https://mail.google.com/mail/u/0/#all/THREAD_ID" style="font-size:12px;">Open in Gmail <i class="ti ti-external-link" style="font-size:12px;vertical-align:-1px;" aria-hidden="true"></i></a>
+    <button onclick="dismissCard('THREAD_ID')" style="width:auto;padding:4px 10px;font-size:12px;margin-left:auto;"><i class="ti ti-x" style="font-size:14px;vertical-align:-2px;margin-right:4px;" aria-hidden="true"></i>Not interested</button>
+  </div>
+
+  <div id="body-THREAD_ID" style="display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;">FULL_EMAIL_TEXT</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+      <p style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px;">option A &middot; LABEL_A</p>
+      <p style="font-size:13px;margin:0 0 10px;line-height:1.5;">DRAFT_PREVIEW_A</p>
+      <button onclick="sendPrompt('CREATE_DRAFT | thread:THREAD_ID | to:EMAIL | option:A')" style="width:100%;">Create this draft <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+    </div>
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+      <p style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px;">option B &middot; LABEL_B</p>
+      <p style="font-size:13px;margin:0 0 10px;line-height:1.5;">DRAFT_PREVIEW_B</p>
+      <button onclick="sendPrompt('CREATE_DRAFT | thread:THREAD_ID | to:EMAIL | option:B')" style="width:100%;">Create this draft <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+    </div>
+  </div>
+
+  <textarea id="custom-THREAD_ID" rows="2" placeholder="Or type/describe what you want to say instead..." style="width:100%;resize:vertical;margin-bottom:8px;"></textarea>
+  <button onclick="const v=document.getElementById('custom-THREAD_ID').value; if(v.trim()) sendPrompt('CUSTOM_DRAFT | thread:THREAD_ID | to:EMAIL | instructions:' + v)" style="width:100%;">Draft it my way <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+</div>
+
+<p style="font-size:16px;font-weight:500;margin:0 0 0.75rem;">Low confidence &mdash; click to open</p>
+
+<div id="card-LC_THREAD_ID" style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:0.75rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;cursor:pointer;" onclick="toggleBody('LC_THREAD_ID')">
+    <div>
+      <p style="font-weight:500;font-size:15px;margin:0;">SENDER</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:2px 0 0;">SUBJECT</p>
+    </div>
+    <i class="ti ti-chevron-down" style="font-size:18px;" aria-hidden="true"></i>
+  </div>
+
+  <div id="body-LC_THREAD_ID" style="display:none;">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;line-height:1.6;">SUMMARY_OR_WHY_LOW_CONFIDENCE</p>
+    <div style="display:flex;gap:14px;margin-bottom:10px;">
+      <a href="https://mail.google.com/mail/u/0/#all/LC_THREAD_ID" style="font-size:12px;">Open in Gmail <i class="ti ti-external-link" style="font-size:12px;vertical-align:-1px;" aria-hidden="true"></i></a>
+      <button onclick="dismissCard('LC_THREAD_ID')" style="width:auto;padding:4px 10px;font-size:12px;margin-left:auto;"><i class="ti ti-x" style="font-size:14px;vertical-align:-2px;margin-right:4px;" aria-hidden="true"></i>Not interested</button>
+    </div>
+
+    <div id="context-ask-LC_THREAD_ID" style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;margin-bottom:10px;">
+      <p style="font-size:13px;margin:0 0 8px;">No prior conversation with this sender in the scanned window. Want me to search your full mailbox for past context before drafting?</p>
+      <div style="display:flex;gap:10px;">
+        <button onclick="sendPrompt('SEARCH_CONTEXT | thread:LC_THREAD_ID | sender:EMAIL')" style="width:100%;">Yes, search first</button>
+        <button onclick="document.getElementById('context-ask-LC_THREAD_ID').style.display='none'; document.getElementById('generic-drafts-LC_THREAD_ID').style.display='block';" style="width:100%;">No, generic reply</button>
+      </div>
+    </div>
+
+    <div id="generic-drafts-LC_THREAD_ID" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+          <p style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px;">option A</p>
+          <p style="font-size:13px;margin:0 0 10px;line-height:1.5;">DRAFT_PREVIEW_A</p>
+          <button onclick="sendPrompt('CREATE_DRAFT | thread:LC_THREAD_ID | to:EMAIL | option:A')" style="width:100%;">Create this draft <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+        </div>
+        <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+          <p style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px;">option B</p>
+          <p style="font-size:13px;margin:0 0 10px;line-height:1.5;">DRAFT_PREVIEW_B</p>
+          <button onclick="sendPrompt('CREATE_DRAFT | thread:LC_THREAD_ID | to:EMAIL | option:B')" style="width:100%;">Create this draft <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+        </div>
+      </div>
+      <textarea id="custom-LC_THREAD_ID" rows="2" placeholder="Or type/describe what you want to say instead..." style="width:100%;resize:vertical;margin-bottom:8px;"></textarea>
+      <button onclick="const v=document.getElementById('custom-LC_THREAD_ID').value; if(v.trim()) sendPrompt('CUSTOM_DRAFT | thread:LC_THREAD_ID | to:EMAIL | instructions:' + v)" style="width:100%;">Draft it my way <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:14px;"></i></button>
+    </div>
+  </div>
+</div>
+
+<p style="font-size:16px;font-weight:500;margin:1.5rem 0 0.75rem;">Sent <span style="color:var(--color-text-tertiary);font-weight:400;">(N)</span></p>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;">
+  <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:0.75rem 1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <p style="font-size:14px;margin:0;">SENDER &middot; SUBJECT</p>
+        <p style="font-size:12px;color:var(--color-text-tertiary);margin:2px 0 0;">sent HH:MM, [edited from option A / written directly by you]</p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="toggleBody('sent-THREAD_ID')" style="width:auto;padding:4px 8px;"><i class="ti ti-eye" style="font-size:14px;" aria-hidden="true"></i></button>
+        <button onclick="sendPrompt('FEEDBACK | thread:THREAD_ID | rating:up')" aria-label="Good draft" style="width:auto;padding:4px 8px;">
+        <i class="ti ti-thumb-up" style="font-size:14px;" aria-hidden="true"></i></button>
+        <button onclick="sendPrompt('FEEDBACK | thread:THREAD_ID | rating:down')" aria-label="Bad draft" style="width:auto;padding:4px 8px;"><i class="ti ti-thumb-down" style="font-size:14px;" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div id="body-sent-THREAD_ID" style="display:none;margin-top:8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;line-height:1.6;">SENT_TEXT_PREVIEW <a href="https://mail.google.com/mail/u/0/#all/THREAD_ID" style="font-size:12px;">Open in Gmail <i class="ti ti-external-link" style="font-size:12px;" aria-hidden="true"></i></a></div>
+  </div>
+</div>
+
+<p style="font-size:16px;font-weight:500;margin:0 0 0.75rem;">Dismissed <span id="dismissed-count" style="color:var(--color-text-tertiary);font-weight:400;">(0)</span></p>
+<div style="display:flex;flex-direction:column;gap:6px;">
+  <div id="dismissed-THREAD_ID" style="display:none;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 12px;justify-content:space-between;align-items:center;">
+    <span style="font-size:13px;">SENDER &middot; SUBJECT</span>
+    <button onclick="restoreCard('THREAD_ID')" style="width:auto;padding:3px 10px;font-size:12px;">Restore</button>
+  </div>
+  <p id="dismissed-empty" style="font-size:13px;color:var(--color-text-tertiary);margin:0;">Nothing dismissed yet.</p>
+</div>
+
+<script>
+var dismissedCount = 0;
+function toggleBody(id){
+  var el = document.getElementById('body-' + id);
+  if (el) { el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
+}
+function updateDismissedUI(){
+  var span = document.getElementById('dismissed-count');
+  if (span) span.textContent = '(' + dismissedCount + ')';
+  var empty = document.getElementById('dismissed-empty');
+  if (empty) empty.style.display = dismissedCount === 0 ? 'block' : 'none';
+}
+function dismissCard(id){
+  var card = document.getElementById('card-' + id);
+  var strip = document.getElementById('dismissed-' + id);
+  if (card) card.style.display = 'none';
+  if (strip) { strip.style.display = 'flex'; }
+  dismissedCount++;
+  updateDismissedUI();
+  sendPrompt('DISMISS | thread:' + id);
+}
+function restoreCard(id){
+  var card = document.getElementById('card-' + id);
+  var strip = document.getElementById('dismissed-' + id);
+  if (card) card.style.display = 'block';
+  if (strip) strip.style.display = 'none';
+  dismissedCount = Math.max(0, dismissedCount - 1);
+  updateDismissedUI();
+  sendPrompt('RESTORE | thread:' + id);
+}
+</script>
