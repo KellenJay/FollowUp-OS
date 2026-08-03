@@ -5,11 +5,14 @@ threads into Needs-reply / Low-confidence / Needs-follow-up, drafts two AI reply
 options per thread, and tracks post-meeting follow-ups. See `PRD.md` for the full
 product spec and `SKILLS.md` for a feature index.
 
-This is a static front-end prototype rebuilt from a Claude Design export — plain
-HTML/CSS/JS, no framework, no build step. All data below is mocked in `app.js`;
-there is no backend yet (see PRD.md's "Suggested architecture" and "Recommended
-build path" for what gets layered on next: Google OAuth, Gmail/Calendar API,
-Postgres, Claude API, cron jobs).
+This started as a static front-end prototype rebuilt from a Claude Design export
+and is now scaffolded on Next.js (App Router + TypeScript) so it can hold OAuth
+tokens and call a database/LLM securely. The original vanilla `app.js` rendering
+logic still runs client-side (served from `public/app.js`, mounted into `#app` by
+`app/page.tsx`) — it's being incrementally wired to real data instead of the
+mock data it started with, per `PRD.md`'s "Suggested architecture" and
+"Recommended build path" (Google OAuth, Gmail/Calendar API, Postgres, Claude API,
+cron jobs).
 
 ## What's actually interactive
 
@@ -41,16 +44,16 @@ review, matching the product's "never auto-send" rule.
 ## Run locally
 
 ```bash
+npm install
 npm run dev
 ```
 
-This just runs `npx serve . -l 3000` (no real dependencies — there's no build
-step). Or use any static file server, e.g. `python3 -m http.server 3000`.
+This runs `next dev` on port 3000.
 
 ## Deploy to Vercel
 
 1. Push this repo to GitHub.
 2. In Vercel: **Import Project** → select the repo.
-3. Framework preset: **Other** (no build command, no output directory needed).
+3. Framework preset: **Next.js** (auto-detected — no manual config needed).
 4. Deploy. Vercel redeploys automatically on every push once the project is
    linked.

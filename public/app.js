@@ -141,6 +141,11 @@ const SEEDS = [
   { id: "x2", name: "Cassie Moore", subject: "Quick 15 min about our SDR-as-a-service?", mailbox: "bd@heartcount.com", meta: "cold outbound" }
 ];
 
+// Real persisted dismissed items (threads + sent-message follow-ups), loaded
+// from /api/dashboard — replaces the old dismissedIds-only approach so the
+// Dismissed tab survives a page reload instead of resetting every session.
+const DISMISSED = [];
+
 const DRAFTS = {
   t1: [
     { label: "Direct with numbers", tone: "#dcf0e6", toneText: "#2b7355",
@@ -293,12 +298,15 @@ const state = {
   toast: null,
   expanded: {},
   feedback: {},
+  feedbackNotes: {},
   sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true },
   dismissedIds: ["x1", "x2"],
   inboxOpen: true,
   activeMailbox: DEFAULT_MAILBOX,
   activeNav: "inbox",
   openFilter: null,
+  openMoveMenu: null,
+  confirmSend: null,
   defaultMailbox: DEFAULT_MAILBOX,
   filterVals: { priority: null, mailbox: DEFAULT_MAILBOX, date: null, sender: null },
   spin: 0,
@@ -388,12 +396,289 @@ function flash(msg, action, actionLabel) {
   toastTimer = setTimeout(() => { state.toast = null; renderAll(); }, action ? 6000 : 3200);
 }
 
-function moveToDismissed(id, who) {
-  state.dismissedIds = addOnce(state.dismissedIds, id);
-  flash(who + " moved to Dismissed", () => {
-    state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+// ---------------------------------------------------------------------------
+// CATEGORY MOVE (needs-reply / low-confidence / follow-up / dismissed)
+// ---------------------------------------------------------------------------
+// Lets Ellen manually re-sort a card between categories from a dropdown next
+// to the priority pill, without dismissing it — added per her 2026-07-29
+// request, then extended into real dismiss/restore (Step 6, 2026-07-29):
+// "dismissed" is just another category in this same state machine, so
+// dismiss/restore reuse all of this rather than needing separate logic.
+// Persists via PATCH /api/threads/:id/category so a manual choice sticks
+// across rescans (the scan pipeline never touches status on an
+// already-classified thread, so this can't be silently overwritten).
+
+const CATEGORY_LABELS = {
+  needs_reply: "Needs reply",
+  low_confidence: "Low confidence",
+  manual_followup: "Follow-up",
+  dismissed: "Dismissed"
+};
+
+function categoryMoveOptions(id, currentStatus) {
+  return Object.keys(CATEGORY_LABELS)
+    .filter(status => status !== currentStatus)
+    .map(status => ({ id: id, status: status, label: CATEGORY_LABELS[status] }));
+}
+
+function findLiveItem(id) {
+  return THREADS.filter(t => t.id === id)[0] || LOWCONF.filter(t => t.id === id)[0] ||
+    FOLLOWUPS.filter(t => t.id === id)[0] || DISMISSED.filter(t => t.id === id)[0];
+}
+
+function removeFromAllLists(id) {
+  [THREADS, LOWCONF, FOLLOWUPS, DISMISSED].forEach(list => {
+    const idx = list.findIndex(t => t.id === id);
+    if (idx >= 0) list.splice(idx, 1);
+  });
+}
+
+// Every item pushed by applyCategoryMove below stamps a `status` field
+// matching exactly where it landed, so this never has to special-case shape.
+function categoryOf(item) {
+  return item.status || (item.low ? "low_confidence" : "needs_reply");
+}
+
+// Pure state-surgery + persistence, no toast — shared by the initial move
+// and by the undo action, so undo is just "apply the reverse move" rather
+// than special-cased revert logic. Also shared by restore-from-Dismissed,
+// since restoring is just "move to needs_reply/low_confidence" from here.
+function applyCategoryMove(id, newStatus, item) {
+  state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+  removeFromAllLists(id);
+
+  if (newStatus === "dismissed") {
+    state.dismissedIds = addOnce(state.dismissedIds, id);
+    // Resolve the "true home" from the low_confidence flag rather than
+    // carrying forward item.origin as-is — a manual-followup card has
+    // origin "manual", which isn't a valid restore target on its own
+    // (mirrors the low_confidence-flag logic in dashboard.ts's
+    // dismissedThreads mapping, so a fresh page load agrees with this).
+    const trueHome = item.low ? "low_confidence" : "needs_reply";
+    DISMISSED.push(Object.assign({}, item, {
+      status: "dismissed",
+      origin: trueHome,
+      meta: trueHome === "low_confidence" ? "low confidence" : "needed reply"
+    }));
+  } else if (newStatus === "manual_followup") {
+    FOLLOWUPS.push(Object.assign({}, item, {
+      status: "manual_followup",
+      origin: "manual",
+      why: item.why || item.nudge,
+      nudge: item.why || item.nudge,
+      sent: "Flagged just now",
+      days: 0
+    }));
+  } else if (newStatus === "low_confidence") {
+    LOWCONF.push(Object.assign({}, item, { status: "low_confidence", origin: "low_confidence", low: true }));
+  } else if (newStatus === "needs_reply") {
+    THREADS.push(Object.assign({}, item, { status: "needs_reply", origin: "needs_reply", low: false }));
+  }
+
+  fetch("/api/threads/" + id + "/category", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: newStatus })
+  }).catch(err => {
+    console.error("Failed to save category move", err);
+    flash("Couldn't save that move — refresh and try again");
     renderAll();
   });
+}
+
+function moveCardCategory(id, newStatus, name) {
+  const item = findLiveItem(id);
+  if (!item) return;
+
+  const previousStatus = categoryOf(item);
+  const snapshot = Object.assign({}, item);
+
+  applyCategoryMove(id, newStatus, item);
+
+  // Gmail-style undo-send pattern: toast carries an action that reverses
+  // the exact move, rather than a generic "are you sure" confirmation.
+  flash((name || "This thread") + " moved to " + CATEGORY_LABELS[newStatus], () => {
+    applyCategoryMove(id, previousStatus, snapshot);
+    renderAll();
+  });
+}
+
+// "Stop chasing" on a follow-up card — real persistence + undo, same pattern
+// as moveCardCategory above, but a manual-origin item (a threads row) and a
+// sent-origin item (a followups row) live in different tables with
+// different ids, so each needs its own endpoint rather than reusing
+// /api/threads/:id/category.
+function persistFollowupStatus(item, status) {
+  const url = item.origin === "manual"
+    ? "/api/threads/" + item.id + "/category"
+    : "/api/followups/" + item.id + "/status";
+  const body = item.origin === "manual"
+    ? { status: status === "dismissed" ? "dismissed" : "manual_followup" }
+    : { status: status === "dismissed" ? "dismissed" : "pending" };
+
+  fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }).catch(err => {
+    console.error("Failed to save follow-up status", err);
+    flash("Couldn't save — refresh and try again");
+    renderAll();
+  });
+}
+
+// Only for sent-origin (followups-table) items — manual-origin follow-up
+// cards are threads rows and go through moveCardCategory instead (see the
+// "dismissFu" action case), since they persist via a different endpoint.
+function dismissFollowup(id, name) {
+  const idx = FOLLOWUPS.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  const item = FOLLOWUPS[idx];
+
+  FOLLOWUPS.splice(idx, 1);
+  state.dismissedIds = addOnce(state.dismissedIds, id);
+  DISMISSED.push(Object.assign({}, item, { status: "dismissed", meta: "follow-up" }));
+  persistFollowupStatus(item, "dismissed");
+
+  flash((name || "This follow-up") + " moved to Dismissed", () => {
+    const dIdx = DISMISSED.findIndex(t => t.id === id);
+    if (dIdx >= 0) DISMISSED.splice(dIdx, 1);
+    state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+    FOLLOWUPS.push(item);
+    persistFollowupStatus(item, "pending");
+    renderAll();
+  });
+}
+
+// Post-meeting "Skip this call" — its own table/id/endpoint again, same
+// reasoning as persistFollowupStatus above.
+function persistMeetingStatus(item, meetingState) {
+  fetch("/api/meetings/" + item.id + "/status", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state: meetingState })
+  }).catch(err => {
+    console.error("Failed to save meeting status", err);
+    flash("Couldn't save — refresh and try again");
+    renderAll();
+  });
+}
+
+function dismissMeeting(id, name) {
+  const idx = MEETINGS.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  const item = MEETINGS[idx];
+  const previousState = item.state;
+
+  MEETINGS.splice(idx, 1);
+  state.dismissedIds = addOnce(state.dismissedIds, id);
+  DISMISSED.push(Object.assign({}, item, { status: "dismissed", restoreState: previousState, meta: "post-meeting" }));
+  persistMeetingStatus(item, "dismissed");
+
+  flash((name || "This meeting") + " moved to Dismissed", () => {
+    const dIdx = DISMISSED.findIndex(t => t.id === id);
+    if (dIdx >= 0) DISMISSED.splice(dIdx, 1);
+    state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+    MEETINGS.push(item);
+    persistMeetingStatus(item, previousState);
+    renderAll();
+  });
+}
+
+// Dismissed-tab restore: threads-based items (needs-reply/low-confidence/
+// manual-followup, all pre-dismiss) go back through moveCardCategory using
+// the "true home" bucket dashboard.ts resolved from low_confidence; sent
+// follow-ups and meetings each restore via their own endpoint instead.
+function restoreFromDismissed(id, name) {
+  const item = DISMISSED.filter(t => t.id === id)[0];
+  if (!item) return;
+
+  if (item.origin === "sent") {
+    const idx = DISMISSED.findIndex(t => t.id === id);
+    if (idx >= 0) DISMISSED.splice(idx, 1);
+    state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+    FOLLOWUPS.push(item);
+    persistFollowupStatus(item, "pending");
+    flash((name || "This follow-up") + " restored", () => dismissFollowup(id, name));
+    renderAll();
+  } else if (item.origin === "meeting") {
+    const idx = DISMISSED.findIndex(t => t.id === id);
+    if (idx >= 0) DISMISSED.splice(idx, 1);
+    state.dismissedIds = state.dismissedIds.filter(x => x !== id);
+    const restored = Object.assign({}, item, { state: item.restoreState || "waiting" });
+    MEETINGS.push(restored);
+    persistMeetingStatus(item, restored.state);
+    flash((name || "This meeting") + " restored", () => dismissMeeting(id, name));
+    renderAll();
+  } else {
+    moveCardCategory(id, item.origin, name);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// REAL SEND (Gmail API) — confirm dialog, then a delayed-send undo window
+// ---------------------------------------------------------------------------
+
+function removeFromLiveLists(id) {
+  [THREADS, LOWCONF, FOLLOWUPS, MEETINGS].forEach(list => {
+    const idx = list.findIndex(t => t.id === id);
+    if (idx >= 0) list.splice(idx, 1);
+  });
+}
+
+// Fires 6 seconds after confirmation (matching the toast's own undo-window
+// duration in flash()) — an email can't be "unsent" via the Gmail API once
+// it's actually transmitted, so Undo has to cancel the API call before it
+// happens, not reverse it after. The card stays visible in its original
+// list for the whole window; it's only removed once the send actually goes
+// through.
+function startDelayedSend(payload) {
+  let cancelled = false;
+
+  const timer = setTimeout(() => {
+    if (cancelled) return;
+    fetch(payload.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: payload.text, origin: payload.origin })
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || "Send failed");
+      }
+      return res.json();
+    }).then((data) => {
+      removeFromLiveLists(payload.id);
+      SENT.push({
+        id: data.sentId || payload.id,
+        name: payload.name,
+        org: payload.org || "",
+        initials: payload.initials || "?",
+        av: payload.av || "linear-gradient(135deg,#cfe2f7,#b6cdf0)",
+        subject: payload.subject || "",
+        mailbox: payload.mailbox || "",
+        time: "sent just now",
+        origin: payload.origin,
+        body: payload.text,
+        feedback: null,
+        feedbackNote: ""
+      });
+      flash("Sent to " + (payload.name || "recipient"));
+      renderAll();
+    }).catch(err => {
+      console.error("Failed to send", err);
+      flash("Couldn't send — " + err.message);
+      renderAll();
+    });
+  }, 6000);
+
+  flash("Sending to " + (payload.name || "recipient") + "…", () => {
+    cancelled = true;
+    clearTimeout(timer);
+    flash("Send cancelled");
+    renderAll();
+  }, "Undo");
+  renderAll();
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +695,12 @@ function meetVals(m) {
     isWaiting: m.state === "waiting",
     hasDrafts: m.state !== "waiting",
     note: m.note || "", summary: m.summary || "", fallback: m.fallback || "",
-    lead: m.summary || m.note || "Drafted from your message history with " + m.name.split(" ")[0] + " — check the recap below before sending.",
+    // "Drafted... check the recap below" is only true once a transcript or
+    // fallback draft actually exists — showing it for a still-waiting
+    // meeting implied a recap existed when the card had nothing below it yet.
+    lead: m.summary || m.note || (m.state === "waiting"
+      ? "Waiting to see if a transcript arrives before drafting a follow-up with " + m.name.split(" ")[0] + "."
+      : "Drafted from your message history with " + m.name.split(" ")[0] + " — check the recap below before sending."),
     actions: (m.actions || []).map(a => ({ text: a })),
     hasActions: !!m.actions,
     isFallback: m.state === "none",
@@ -442,15 +732,22 @@ function meetVals(m) {
 
 function fuVals(t) {
   const open = !!state.expanded["fu-" + t.id];
+  // "manual" = an inbox thread Ellen moved here herself via the category
+  // dropdown (see moveCardCategory) — different concept from "sent" (a
+  // message she sent that hasn't gotten a reply), so it gets its own pill
+  // and expanded-view treatment instead of a fake day count.
+  const isManual = t.origin === "manual";
   return {
     id: t.id, name: t.name, org: t.org, initials: t.initials, av: t.av,
     subject: t.subject, snippet: t.snippet, body: t.body, nudge: t.nudge,
     sent: t.sent, mailbox: t.mailbox,
-    pill: "No reply · " + t.days + " business days",
-    pillBg: t.days >= 5 ? "#fce6d8" : "#dce9fb",
-    pillColor: t.days >= 5 ? "#a5561b" : "#0b6fb8",
-    pillDot: t.days >= 5 ? "#e8801f" : "#0b8ee8",
-    aging: t.days >= 5,
+    isManual: isManual,
+    pill: isManual ? "You flagged this" : "No reply · " + t.days + " business days",
+    pillBg: isManual ? "#eef0f4" : (t.days >= 5 ? "#fce6d8" : "#dce9fb"),
+    pillColor: isManual ? "#5d6470" : (t.days >= 5 ? "#a5561b" : "#0b6fb8"),
+    pillDot: isManual ? "#9aa1ac" : (t.days >= 5 ? "#e8801f" : "#0b8ee8"),
+    aging: !isManual && t.days >= 5,
+    moveOptions: isManual ? categoryMoveOptions(t.id, "manual_followup") : null,
     open: open,
     toggleLabel: open ? "Hide follow-up options" : "View follow-up options",
     toggleIcon: open ? "ti-chevron-up" : "ti-chevron-down"
@@ -460,6 +757,7 @@ function fuVals(t) {
 function cardVals(t) {
   const tier = TIERS[t.tier];
   const open = !!state.expanded[t.id];
+  const currentStatus = t.origin || (t.low ? "low_confidence" : "needs_reply");
   return {
     id: t.id, name: t.name, org: t.org, initials: t.initials, av: t.av,
     subject: t.subject, snippet: t.snippet, mailbox: t.mailbox, time: t.time,
@@ -472,7 +770,9 @@ function cardVals(t) {
     draftBg: t.low ? "#e8e2f8" : "#dce9fb",
     draftIconColor: t.low ? "#8b7fd4" : "#0b8ee8",
     draftIcon: t.low ? "ti-help-circle" : "ti-sparkles",
-    cta: t.low ? "Add context & draft" : "Review drafts"
+    cta: t.low ? "Add context & draft" : "Review drafts",
+    moveOpen: state.openMoveMenu === t.id,
+    moveOptions: categoryMoveOptions(t.id, currentStatus)
   };
 }
 
@@ -584,7 +884,7 @@ function renderVals() {
         meta: String(SENT.filter(m => !mbF || m.mailbox === mbF).length
           + s.sentIds.filter(id => { const t = ALL.filter(x => x.id === id)[0]; return t && (!mbF || t.mailbox === mbF); }).length) },
       { key: "dismissed", icon: "ti-archive", label: "Dismissed",
-        meta: String(s.dismissedIds.filter(id => { const x = ALL.concat(SEEDS).filter(y => y.id === id)[0]; return x && (!mbF || x.mailbox === mbF); }).length) },
+        meta: String(DISMISSED.filter(d => !mbF || d.mailbox === mbF).length) },
       { key: "settings", icon: "ti-settings", label: "Settings", meta: "" }
     ].map(n => {
       const on = s.view === n.key;
@@ -641,7 +941,7 @@ function renderVals() {
     ),
 
     isHome: s.view === "home",
-    showFilters: s.view !== "home",
+    showFilters: s.view !== "home" && s.view !== "settings",
     scopeLabel: s.filterVals.mailbox || "All mailboxes",
     scopeNote: s.filterVals.mailbox ? "Counts below are for this mailbox" : "Counts below span every mailbox",
     isTab: s.view !== "thread" && s.view !== "settings" && s.view !== "home",
@@ -651,13 +951,24 @@ function renderVals() {
     summaryCards: (() => {
       const need = THREADS.filter(t => !gone(t.id));
       const today = need.filter(t => t.tier === "today");
+      const lowConf = LOWCONF.filter(t => !gone(t.id));
       const calls = MEETINGS.filter(m => !gone(m.id));
-      const older = FOLLOWUPS.filter(t => !gone(t.id) && t.days >= 5);
+      const allFu = FOLLOWUPS.filter(t => !gone(t.id));
+      const older = allFu.filter(t => t.days >= 5);
+      // Low confidence had no tile at all, and "Older follow-ups" only ever
+      // showed the aged subset — together that made the sidebar's combined
+      // "Follow ups" badge (needs-reply + low-confidence + all follow-ups)
+      // impossible to reconcile from Home alone (confirmed via user
+      // feedback 2026-08-02: e.g. sidebar showed 26 with no way to see
+      // where the other 12 came from). Low confidence gets its own tile,
+      // and Older follow-ups now states the total it's a subset of.
       const cardDefs = [
         { k: "need", n: need.length, label: "Needs reply", sub: "drafted and waiting", icon: "ti-bolt", bg: "#dce9fb", fg: "#0b6fb8",
           go: "home-need" },
         { k: "today", n: today.length, label: "Reply today", sub: "inside the promise window", icon: "ti-flame", bg: "#fce6d8", fg: "#a5561b",
           go: "home-today" },
+        { k: "lowconf", n: lowConf.length, label: "Low confidence", sub: "needs a judgment call", icon: "ti-help-circle", bg: "#e8e2f8", fg: "#8b7fd4",
+          go: "home-lowconf" },
         { k: "calls", n: calls.length,
           label: "Post-meeting",
           sub: calls.filter(m => (m.pendingHours || 0) >= 48 && m.state !== "waiting").length
@@ -665,7 +976,7 @@ function renderVals() {
             : "notes to send",
           icon: "ti-microphone-2", bg: "#e8e2f8", fg: "#54459b",
           go: "home-calls" },
-        { k: "older", n: older.length, label: "Older follow-ups", sub: "5+ business days, no reply", icon: "ti-clock-exclamation", bg: "#f6ecd9", fg: "#8a6a24",
+        { k: "older", n: older.length, label: "Older follow-ups", sub: "5+ business days, no reply (of " + allFu.length + " total)", icon: "ti-clock-exclamation", bg: "#f6ecd9", fg: "#8a6a24",
           go: "home-older" },
         { k: "sent", n: SENT.length + s.sentIds.length, label: "Sent", sub: "rate the drafts", icon: "ti-send", bg: "#dcf0e6", fg: "#2b7355",
           go: "home-sent" },
@@ -676,13 +987,19 @@ function renderVals() {
     })(),
     mailboxRows: MAILBOXES.map(m => {
       const need = THREADS.filter(t => !gone(t.id) && t.mailbox === m.address);
+      const mbFu = FOLLOWUPS.filter(x => !gone(x.id) && x.mailbox === m.address);
       const stats = [
         { label: "Needs reply", n: need.length, fg: "#0b6fb8", bg: "#dce9fb", go: "mb-need", mailbox: m.address },
         { label: "Reply today", n: need.filter(t => t.tier === "today").length, fg: "#a5561b", bg: "#fce6d8", go: "mb-today", mailbox: m.address },
+        { label: "Low confidence", n: LOWCONF.filter(x => !gone(x.id) && x.mailbox === m.address).length, fg: "#8b7fd4", bg: "#e8e2f8", go: "mb-lowconf", mailbox: m.address },
         { label: "Post-meeting", n: MEETINGS.filter(x => !gone(x.id) && x.mailbox === m.address).length, fg: "#54459b", bg: "#e8e2f8", go: "mb-calls", mailbox: m.address },
-        { label: "Older follow-ups", n: FOLLOWUPS.filter(x => !gone(x.id) && x.days >= 5 && x.mailbox === m.address).length, fg: "#8a6a24", bg: "#f6ecd9", go: "mb-older", mailbox: m.address }
+        { label: "Older follow-ups", n: mbFu.filter(x => x.days >= 5).length, fg: "#8a6a24", bg: "#f6ecd9", go: "mb-older", mailbox: m.address }
       ];
-      const total = stats[0].n + stats[2].n + stats[3].n;
+      // Matches the sidebar's combined "Follow ups" badge formula exactly
+      // (needs-reply + low-confidence + all follow-ups) so this card's
+      // total is reconcilable against it — previously excluded low
+      // confidence entirely and only counted the aged subset of follow-ups.
+      const total = stats[0].n + stats[2].n + stats[3].n + mbFu.length;
       return {
         address: m.address, dot: m.dot, initial: m.address.slice(0, 1).toUpperCase(),
         role: m.role,
@@ -783,34 +1100,40 @@ function renderVals() {
         body: draftText(id, s.chosen[id] || 0) };
     }).concat(SENT.filter(m => !mbF || m.mailbox === mbF)).map(m => {
       const open = !!s.expanded["sent-" + m.id];
-      const fb = s.feedback[m.id];
+      // Falls back to the server-persisted value so a rating survives a
+      // reload instead of only reflecting clicks made this session.
+      const fb = s.feedback[m.id] !== undefined ? s.feedback[m.id] : (m.feedback || null);
+      const noteValue = s.feedbackNotes[m.id] !== undefined ? s.feedbackNotes[m.id] : (m.feedbackNote || "");
+      // Placeholder "just sent this session" items (before real Gmail send
+      // exists) have no backing `sent` row yet — m.feedback is undefined for
+      // those specifically (real rows always get feedback: null, not
+      // undefined, from dashboard.ts), so skip persistence for them rather
+      // than PATCH a nonexistent id.
+      const canPersist = m.feedback !== undefined;
       return {
         id: m.id, name: m.name, org: m.org, initials: m.initials, av: m.av,
         subject: m.subject, time: m.time, origin: m.origin, body: m.body,
         open: open,
+        canPersist: canPersist,
         toggleIcon: open ? "ti-eye-off" : "ti-eye",
         upBg: fb === "up" ? "#dcf0e6" : "#fff",
         upBorder: fb === "up" ? "#bde3ce" : "#eceef1",
         upColor: fb === "up" ? "#2b7355" : "#9aa1ac",
         downBg: fb === "down" ? "#fce6d8" : "#fff",
         downBorder: fb === "down" ? "#f4d0ba" : "#eceef1",
-        downColor: fb === "down" ? "#a5561b" : "#9aa1ac"
+        downColor: fb === "down" ? "#a5561b" : "#9aa1ac",
+        noteValue: noteValue
       };
     }),
 
     dismissedOpen: s.sections.dismissed,
     dismissedChevron: s.sections.dismissed ? "ti-chevron-up" : "ti-chevron-down",
-    dismissedCount: s.dismissedIds.filter(id => { const x = ALL.concat(SEEDS).filter(y => y.id === id)[0]; return x && (!mbF || x.mailbox === mbF); }).length,
-    hasDismissed: s.dismissedIds.length > 0,
-    noDismissed: s.dismissedIds.filter(id => { const x = ALL.concat(SEEDS).filter(y => y.id === id)[0]; return x && (!mbF || x.mailbox === mbF); }).length === 0,
-    dismissed: s.dismissedIds.filter(id => { const x = ALL.concat(SEEDS).filter(y => y.id === id)[0]; return x && (!mbF || x.mailbox === mbF); }).map(id => {
-      const src = ALL.concat(SEEDS).filter(x => x.id === id)[0];
-      if (!src) return { id: id, name: id, subject: "", meta: "" };
-      return {
-        id: id, name: src.name, subject: src.subject,
-        meta: src.meta || (src.low ? "low confidence" : (src.days ? "follow-up" : (src.meeting ? "post-meeting" : "needed reply")))
-      };
-    }),
+    dismissedCount: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length,
+    hasDismissed: DISMISSED.length > 0,
+    noDismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length === 0,
+    dismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).map(d => ({
+      id: d.id, name: d.name, subject: d.subject, meta: d.meta || "dismissed"
+    })),
 
     bottomNav: [
       { key: "home", icon: "ti-layout-grid", label: "Inbox" },
@@ -845,9 +1168,18 @@ function esc(str) {
     .replace(/>/g, "&gt;");
 }
 
+// Some emails (long transcript exports, forwarded threads with tracking-pixel
+// URLs) run to many thousands of characters — showing all of it inline made
+// a card unreadably long. Cap the inline preview; "Open in Gmail" already
+// covers reading the full thing.
+const BODY_PREVIEW_LIMIT = 2000;
+
 function nl2body(str) {
   // used inside <p style="white-space:pre-wrap"> so we can just escape
-  return esc(str);
+  const text = str || "";
+  if (text.length <= BODY_PREVIEW_LIMIT) return esc(text);
+  return esc(text.slice(0, BODY_PREVIEW_LIMIT).trimEnd()) +
+    '<span style="color:#9aa1ac"> … (truncated — open in Gmail for the full message)</span>';
 }
 
 function avatar(av, initials, size) {
@@ -963,6 +1295,8 @@ root.innerHTML = `
   <span id="toastMsg" style="font-size:12.5px;font-weight:600"></span>
   <button id="toastActionBtn" data-action="toastAction" class="hidden hover-toast-action" style="margin-left:4px;height:26px;padding:0 11px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:transparent;font-size:11.5px;font-weight:700;color:#fff;cursor:pointer"></button>
 </div>
+
+<div id="confirmSendRoot"></div>
 `;
 
 // ---------------------------------------------------------------------------
@@ -1152,6 +1486,27 @@ function renderHome(v) {
 // FOLLOW-UPS (inbox) VIEW — Needs-reply, Low-confidence, Needs-follow-up
 // ---------------------------------------------------------------------------
 
+// Small chevron + dropdown next to the priority pill letting Ellen manually
+// re-sort a needs-reply/low-confidence/manually-flagged card into a
+// different category without dismissing it (added 2026-07-29). Shared
+// between needsCardHtml, lowConfCardHtml, and manual-origin follow-up cards.
+function moveMenuHtml(t) {
+  return `
+  <div style="position:relative">
+    <button data-action="toggleMoveMenu" data-id="${t.id}" title="Move to a different category" style="display:inline-flex;align-items:center;gap:4px;height:22px;flex:none;padding:0 9px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:10.5px;font-weight:700;color:#5d6470;cursor:pointer;white-space:nowrap">
+      Move<i class="ti ti-chevron-down" style="font-size:12px;color:#9aa1ac"></i>
+    </button>
+    ${t.moveOpen ? `
+    <div style="position:absolute;top:26px;right:0;z-index:50;min-width:174px;background:#fff;border:1px solid #eceef1;border-radius:14px;box-shadow:0 18px 40px -12px rgba(16,24,40,.18),0 2px 6px rgba(16,24,40,.05);padding:6px">
+      ${t.moveOptions.map(o => `
+      <button data-action="moveCard" data-id="${o.id}" data-status="${o.status}" data-name="${esc(t.name)}" class="hover-filter-opt" style="display:flex;align-items:center;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:10px;cursor:pointer;text-align:left">
+        <span style="font-size:12.5px;font-weight:600;color:#13161c">Move to ${esc(o.label)}</span>
+      </button>`).join("")}
+    </div>` : ""}
+  </div>
+  `;
+}
+
 function needsCardHtml(t, v) {
   return `
   <article class="card" style="padding:${v.cardPad}">
@@ -1169,10 +1524,13 @@ function needsCardHtml(t, v) {
         <p style="margin:0 0 6px;font-size:13.5px;font-weight:600;color:#13161c">${esc(t.subject)}</p>
         <p style="margin:0;font-size:13px;line-height:1.6;color:#5d6470;text-wrap:pretty">${esc(t.snippet)}</p>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none">
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${t.tierBg};color:${t.tierColor};white-space:nowrap">
-          <span style="width:6px;height:6px;border-radius:999px;background:${t.tierDot}"></span>${esc(t.tierLabel)}</span>
-        <span style="font-size:11px;font-weight:600;color:#a7adb8;white-space:nowrap">${esc(t.waited)}</span>
+      <div style="display:flex;align-items:flex-start;gap:6px;flex:none">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${t.tierBg};color:${t.tierColor};white-space:nowrap">
+            <span style="width:6px;height:6px;border-radius:999px;background:${t.tierDot}"></span>${esc(t.tierLabel)}</span>
+          <span style="font-size:11px;font-weight:600;color:#a7adb8;white-space:nowrap">${esc(t.waited)}</span>
+        </div>
+        ${moveMenuHtml(t)}
       </div>
     </div>
 
@@ -1182,7 +1540,6 @@ function needsCardHtml(t, v) {
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid #ebedf1">
             <i class="ti ti-mail-opened" style="font-size:14px;color:#9aa1ac"></i>
             <span style="font-size:11.5px;font-weight:600;color:#5d6470">to ${esc(t.mailbox)}</span>
-            <span style="margin-left:auto;font-size:11.5px;font-weight:600;color:#9aa1ac">${esc(t.why)}</span>
           </div>
           <p style="margin:0;font-size:13px;line-height:1.7;color:#3a404a;white-space:pre-wrap">${nl2body(t.body)}</p>
         </div>
@@ -1225,10 +1582,13 @@ function lowConfCardHtml(t, v) {
         <p style="margin:0 0 6px;font-size:13.5px;font-weight:600;color:#13161c">${esc(t.subject)}</p>
         <p style="margin:0;font-size:13px;line-height:1.6;color:#5d6470;text-wrap:pretty">${esc(t.snippet)}</p>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none">
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${t.tierBg};color:${t.tierColor};white-space:nowrap">
-          <span style="width:6px;height:6px;border-radius:999px;background:${t.tierDot}"></span>${esc(t.tierLabel)}</span>
-        <span style="font-size:11px;font-weight:600;color:#a7adb8;white-space:nowrap">${esc(t.waited)}</span>
+      <div style="display:flex;align-items:flex-start;gap:6px;flex:none">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${t.tierBg};color:${t.tierColor};white-space:nowrap">
+            <span style="width:6px;height:6px;border-radius:999px;background:${t.tierDot}"></span>${esc(t.tierLabel)}</span>
+          <span style="font-size:11px;font-weight:600;color:#a7adb8;white-space:nowrap">${esc(t.waited)}</span>
+        </div>
+        ${moveMenuHtml(t)}
       </div>
     </div>
 
@@ -1288,9 +1648,15 @@ function fuCardHtml(f, v) {
           <p style="margin:0;font-size:13px;line-height:1.6;color:#5d6470;text-wrap:pretty">${esc(f.snippet)}</p>
         </div>
       </div>
-      <div style="flex:none">
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${f.pillBg};color:${f.pillColor};white-space:nowrap">
-          <span style="width:6px;height:6px;border-radius:999px;background:${f.pillDot}"></span>${esc(f.pill)}</span>
+      <div style="flex:none;display:flex;align-items:flex-start;gap:6px">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:${f.pillBg};color:${f.pillColor};white-space:nowrap">
+            <span style="width:6px;height:6px;border-radius:999px;background:${f.pillDot}"></span>${esc(f.pill)}</span>
+          ${f.aging ? `
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:#fce6d8;color:#a5561b;white-space:nowrap">
+            <i class="ti ti-alarm" style="font-size:12px"></i>Still no reply</span>` : ""}
+        </div>
+        ${f.isManual ? moveMenuHtml(f) : ""}
       </div>
     </div>
 
@@ -1298,8 +1664,8 @@ function fuCardHtml(f, v) {
       <div class="expand-inner">
         <div style="background:#f7f8fa;border-radius:14px;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid #ebedf1">
-            <i class="ti ti-send" style="font-size:14px;color:#9aa1ac"></i>
-            <span style="font-size:11.5px;font-weight:600;color:#5d6470">What you sent from ${esc(f.mailbox)}</span>
+            <i class="ti ${f.isManual ? "ti-mail-opened" : "ti-send"}" style="font-size:14px;color:#9aa1ac"></i>
+            <span style="font-size:11.5px;font-weight:600;color:#5d6470">${f.isManual ? "From " + esc(f.name) : "What you sent from " + esc(f.mailbox)}</span>
             <span style="margin-left:auto;font-size:11.5px;font-weight:600;color:#9aa1ac">${esc(f.sent)}</span>
           </div>
           <p style="margin:0;font-size:13px;line-height:1.7;color:#3a404a;white-space:pre-wrap">${nl2body(f.body)}</p>
@@ -1583,6 +1949,11 @@ function sentRowHtml(m) {
           <p style="margin:0 0 9px;font-size:13px;line-height:1.65;color:#3a404a">${esc(m.body)}</p>
           <a href="https://mail.google.com/mail/u/0/#all/${m.id}" target="_blank" style="font-size:11.5px;font-weight:700">Open in Gmail <i class="ti ti-external-link" style="font-size:12px"></i></a>
         </div>
+        ${m.canPersist ? `
+        <div style="margin-top:9px;display:flex;gap:8px;align-items:center">
+          <input type="text" id="feedbackNote-${m.id}" data-action="feedbackNote" data-id="${m.id}" value="${esc(m.noteValue)}" placeholder="Add a note on this draft (optional)" style="flex:1;height:34px;border:1px solid #eceef1;border-radius:10px;padding:0 11px;font-size:12px;font-weight:500;outline:none">
+          <button data-action="saveFeedbackNote" data-id="${m.id}" class="hover-pill-btn" style="flex:none;height:34px;padding:0 13px;border:1px solid #eceef1;border-radius:10px;background:#fff;font-size:11.5px;font-weight:700;color:#40464f;cursor:pointer">Save</button>
+        </div>` : ""}
       </div>
     </div>
   </div>
@@ -1646,7 +2017,7 @@ function renderDismissed(v) {
               <p style="margin:0;font-size:13px;font-weight:600;color:#5d6470;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name)} · ${esc(d.subject)}</p>
             </div>
             <span style="flex:none;font-size:11px;font-weight:600;color:#a7adb8;background:#f1f2f5;border-radius:999px;padding:3px 9px">${esc(d.meta)}</span>
-            <button data-action="restoreDismissed" data-id="${d.id}" class="hover-restore" style="flex:none;display:flex;align-items:center;gap:5px;height:29px;padding:0 12px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:11.5px;font-weight:700;color:#40464f;cursor:pointer">
+            <button data-action="restoreDismissed" data-id="${d.id}" data-name="${esc(d.name)}" class="hover-restore" style="flex:none;display:flex;align-items:center;gap:5px;height:29px;padding:0 12px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:11.5px;font-weight:700;color:#40464f;cursor:pointer">
               <i class="ti ti-rotate-2" style="font-size:13px;color:#9aa1ac"></i>Restore
             </button>
           </div>
@@ -1942,6 +2313,36 @@ function renderSettings(v) {
 }
 
 // ---------------------------------------------------------------------------
+// SEND CONFIRMATION MODAL
+// ---------------------------------------------------------------------------
+// Explicit two-step send per Ellen's 2026-08-02 request: click Send opens
+// this confirm dialog (nothing sends yet), confirming here starts a 6-second
+// undo window (see startDelayedSend) before the Gmail API call actually
+// fires — real sends can't be "undone" after the fact the way a category
+// move can, so the only honest way to offer Undo is to delay the send
+// itself, same mechanism as Gmail's own Undo Send.
+function renderConfirmSendModal() {
+  const el = document.getElementById("confirmSendRoot");
+  const c = state.confirmSend;
+  if (!c) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.45);padding:20px">
+    <div style="background:#fff;border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35)">
+      <h3 style="margin:0 0 8px;font-size:16px;font-weight:800;letter-spacing:-.2px">${esc(c.label)} to ${esc(c.name || "this recipient")}?</h3>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.55;color:#5d6470">This sends for real through Gmail. You'll get a few seconds to undo right after confirming, before it actually goes out.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button data-action="cancelSendConfirm" class="hover-pill-btn-color" style="height:38px;padding:0 16px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:#40464f;cursor:pointer">Cancel</button>
+        <button data-action="confirmSendYes" class="hover-dark-btn" style="height:38px;padding:0 18px;border:0;border-radius:999px;background:#13161c;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">${esc(c.label)}</button>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // MASTER RENDER
 // ---------------------------------------------------------------------------
 
@@ -1953,6 +2354,7 @@ function renderAll() {
   renderMeetings(v);
   renderSent(v);
   renderDismissed(v);
+  renderConfirmSendModal();
   renderSettings(v);
   renderThread(v);
 }
@@ -2060,7 +2462,18 @@ document.addEventListener("click", (e) => {
       break;
 
     case "dismissCard":
-      moveToDismissed(el.dataset.id, el.dataset.name);
+      moveCardCategory(el.dataset.id, "dismissed", el.dataset.name);
+      renderAll();
+      break;
+
+    case "toggleMoveMenu":
+      state.openMoveMenu = state.openMoveMenu === el.dataset.id ? null : el.dataset.id;
+      renderAll();
+      break;
+
+    case "moveCard":
+      moveCardCategory(el.dataset.id, el.dataset.status, el.dataset.name);
+      state.openMoveMenu = null;
       renderAll();
       break;
 
@@ -2080,10 +2493,18 @@ document.addEventListener("click", (e) => {
       renderAll();
       break;
 
-    case "dismissFu":
-      moveToDismissed(el.dataset.id, el.dataset.name);
+    case "dismissFu": {
+      // Manual-origin cards are threads rows (persist via moveCardCategory);
+      // sent-origin ones are followups rows (persist via dismissFollowup).
+      const fuItem = FOLLOWUPS.filter(t => t.id === el.dataset.id)[0];
+      if (fuItem && fuItem.origin === "manual") {
+        moveCardCategory(el.dataset.id, "dismissed", el.dataset.name);
+      } else {
+        dismissFollowup(el.dataset.id, el.dataset.name);
+      }
       renderAll();
       break;
+    }
 
     case "draftFu":
       openThread(el.dataset.id);
@@ -2109,7 +2530,7 @@ document.addEventListener("click", (e) => {
       break;
 
     case "dismissMeet":
-      moveToDismissed(el.dataset.id, el.dataset.name);
+      dismissMeeting(el.dataset.id, el.dataset.name);
       renderAll();
       break;
 
@@ -2121,14 +2542,47 @@ document.addEventListener("click", (e) => {
 
     case "rateSent": {
       const id = el.dataset.id, val = el.dataset.val;
-      state.feedback = Object.assign({}, state.feedback, { [id]: state.feedback[id] === val ? null : val });
+      const current = state.feedback[id] !== undefined ? state.feedback[id] : null;
+      const newVal = current === val ? null : val;
+      state.feedback = Object.assign({}, state.feedback, { [id]: newVal });
       renderAll();
+      // Only real sent-table rows can take feedback — the "just sent this
+      // session" placeholders (before real Gmail send exists) have no
+      // backing row yet, so skip the PATCH for those and keep it visual-only.
+      if (SENT.some(m => m.id === id)) {
+        fetch("/api/sent/" + id + "/feedback", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feedback: newVal })
+        }).catch(err => {
+          console.error("Failed to save feedback", err);
+          flash("Couldn't save feedback — refresh and try again");
+          renderAll();
+        });
+      }
+      break;
+    }
+
+    case "saveFeedbackNote": {
+      const id = el.dataset.id;
+      const note = state.feedbackNotes[id] !== undefined ? state.feedbackNotes[id] : "";
+      if (SENT.some(m => m.id === id)) {
+        fetch("/api/sent/" + id + "/feedback", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note })
+        }).then(() => { flash("Note saved"); renderAll(); }).catch(err => {
+          console.error("Failed to save note", err);
+          flash("Couldn't save note — refresh and try again");
+          renderAll();
+        });
+      }
       break;
     }
 
     // ---------- Dismissed ----------
     case "restoreDismissed":
-      state.dismissedIds = state.dismissedIds.filter(x => x !== el.dataset.id);
+      restoreFromDismissed(el.dataset.id, el.dataset.name);
       renderAll();
       break;
 
@@ -2221,13 +2675,48 @@ document.addEventListener("click", (e) => {
       const ALL = THREADS.concat(LOWCONF).concat(FOLLOWUPS).concat(MEETINGS);
       const cur = ALL.filter(x => x.id === state.openId)[0];
       if (cur) {
-        const id = cur.id;
+        const chosen = state.chosen[cur.id] === undefined ? 0 : state.chosen[cur.id];
+        const fu = !!cur.days;
+        const mtg = !!cur.meeting;
+        // Same origin-based routing as everywhere else this session: a
+        // manual-followup card is still a threads row, only a real
+        // sent-message follow-up needs the followups endpoint.
+        const kind = mtg ? "meeting" : (cur.origin === "sent" ? "followup" : "thread");
+        const endpoint = kind === "meeting" ? "/api/meetings/" + cur.id + "/send"
+          : kind === "followup" ? "/api/followups/" + cur.id + "/send"
+          : "/api/threads/" + cur.id + "/send";
+        const draftKey = cur.id + "-" + chosen;
+        const draftOrigin = state.drafts[draftKey] !== undefined ? "edited" : (chosen === 1 ? "option_b" : "option_a");
+
+        state.confirmSend = {
+          id: cur.id,
+          endpoint: endpoint,
+          text: draftText(cur.id, chosen),
+          origin: draftOrigin,
+          name: cur.name,
+          org: cur.org,
+          initials: cur.initials,
+          av: cur.av,
+          subject: cur.subject,
+          mailbox: cur.mailbox,
+          label: mtg ? "Send follow-up note" : (fu ? "Send follow-up" : "Send reply")
+        };
+      }
+      renderAll();
+      break;
+    }
+
+    case "cancelSendConfirm":
+      state.confirmSend = null;
+      renderAll();
+      break;
+
+    case "confirmSendYes": {
+      const payload = state.confirmSend;
+      state.confirmSend = null;
+      if (payload) {
         state.view = state.backTo || "inbox";
-        state.sentIds = addOnce(state.sentIds, id);
-        flash("Sent to " + cur.name + " — now in Sent", () => {
-          state.sentIds = state.sentIds.filter(x => x !== id);
-          renderAll();
-        }, "Undo send");
+        startDelayedSend(payload);
       }
       renderAll();
       break;
@@ -2242,16 +2731,19 @@ document.addEventListener("click", (e) => {
     }
 
     case "dismissThread": {
+      // Was still the old fake local-only dismiss (missed when the card-level
+      // dismiss buttons were made real) — same routing as dismissFu/dismissCard.
       const ALL = THREADS.concat(LOWCONF).concat(FOLLOWUPS).concat(MEETINGS);
       const cur = ALL.filter(x => x.id === state.openId)[0];
       if (cur) {
-        const id = cur.id;
         state.view = state.backTo || "inbox";
-        state.dismissedIds = addOnce(state.dismissedIds, id);
-        flash(cur.name + " moved to Dismissed", () => {
-          state.dismissedIds = state.dismissedIds.filter(x => x !== id);
-          renderAll();
-        });
+        if (cur.meeting) {
+          dismissMeeting(cur.id, cur.name);
+        } else if (cur.origin === "sent") {
+          dismissFollowup(cur.id, cur.name);
+        } else {
+          moveCardCategory(cur.id, "dismissed", cur.name);
+        }
       }
       renderAll();
       break;
@@ -2290,6 +2782,9 @@ function handleHomeGo(go) {
     case "home-today":
       goTab("inbox", { filterVals: Object.assign({}, state.filterVals, { priority: "Reply today" }), fuAging: false });
       break;
+    case "home-lowconf":
+      goTab("inbox", { filterVals: Object.assign({}, state.filterVals, { priority: null }), fuAging: false });
+      break;
     case "home-calls":
       goTab("meetings");
       break;
@@ -2314,6 +2809,9 @@ function handleMailboxStatGo(go, mailbox) {
       break;
     case "mb-today":
       goTab("inbox", { filterVals: Object.assign({}, state.filterVals, { mailbox: mailbox, priority: "Reply today" }), activeMailbox: mailbox, fuAging: false });
+      break;
+    case "mb-lowconf":
+      goTab("inbox", { filterVals: Object.assign({}, state.filterVals, { mailbox: mailbox, priority: null }), activeMailbox: mailbox, fuAging: false });
       break;
     case "mb-calls":
       goTab("meetings", { filterVals: Object.assign({}, state.filterVals, { mailbox: mailbox }), activeMailbox: mailbox });
@@ -2358,6 +2856,13 @@ document.addEventListener("input", (e) => {
     if (wordsEl) wordsEl.textContent = words + " words";
     return;
   }
+
+  if (e.target && e.target.dataset && e.target.dataset.action === "feedbackNote") {
+    // Same no-re-render-per-keystroke pattern as editDraft above — "Save"
+    // reads this from state when clicked.
+    state.feedbackNotes = Object.assign({}, state.feedbackNotes, { [e.target.dataset.id]: e.target.value });
+    return;
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -2372,5 +2877,61 @@ window.addEventListener("resize", () => {
 // ---------------------------------------------------------------------------
 // BOOTSTRAP
 // ---------------------------------------------------------------------------
+// Mock data above is now just the initial (empty) shape — real data replaces
+// it here via /api/scan (triggers a live Gmail/Calendar scan) then
+// /api/dashboard (reads the scanned results back in the same shape the mock
+// consts used, so none of the render functions above needed to change).
+
+MAILBOXES.length = 0;
+THREADS.length = 0;
+LOWCONF.length = 0;
+FOLLOWUPS.length = 0;
+SENT.length = 0;
+MEETINGS.length = 0;
+SEEDS.length = 0;
+DISMISSED.length = 0;
+Object.keys(DRAFTS).forEach((k) => delete DRAFTS[k]);
+state.dismissedIds = [];
 
 renderAll();
+
+async function loadLiveData() {
+  try {
+    await fetch("/api/scan", { method: "POST" });
+    const res = await fetch("/api/dashboard");
+    if (res.status === 401) {
+      document.getElementById("app").innerHTML =
+        '<div style="margin:80px auto;text-align:center;font-family:inherit;">' +
+        "<p>You need to sign in to see your inbox.</p>" +
+        '<a href="/connect" style="color:#0b8ee8;">Sign in with Google</a></div>';
+      return;
+    }
+    const data = await res.json();
+
+    MAILBOXES.push(...data.mailboxes);
+    THREADS.push(...data.threads);
+    LOWCONF.push(...data.lowConf);
+    FOLLOWUPS.push(...data.followUps);
+    SENT.push(...data.sent);
+    MEETINGS.push(...data.meetings);
+    DISMISSED.push(...data.dismissed);
+    Object.assign(DRAFTS, data.drafts);
+    // Real dismissed items come back already-dismissed from the server —
+    // dismissedIds still drives the gone()/live() filters that hide them
+    // from the active-queue arrays.
+    state.dismissedIds = data.dismissed.map((d) => d.id);
+
+    if (data.mailboxes[0]) {
+      const first = data.mailboxes[0].address;
+      state.activeMailbox = first;
+      state.defaultMailbox = first;
+      state.filterVals.mailbox = first;
+    }
+
+    renderAll();
+  } catch (err) {
+    console.error("Failed to load live dashboard data", err);
+  }
+}
+
+loadLiveData();
