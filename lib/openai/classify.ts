@@ -26,6 +26,12 @@ export type ThreadForClassification = {
   mailboxAddress: string;
   messageCount: number;
   waitedHours: number;
+  // Both optional, real user-set preferences (app_settings.reply_promise_hours
+  // / draft_voice — 2026-08-14 feedback: previously hardcoded Settings text
+  // with no connection to actual behavior). Omitted falls back to defaults
+  // baked into the base prompt below.
+  replyPromiseHours?: number;
+  draftVoice?: string;
 };
 
 // System prompt encodes the classification judgment call and drafting tone
@@ -37,6 +43,7 @@ const SYSTEM_PROMPT = `You triage business email for a Strategic Partnership Man
 1. CLASSIFICATION — "needs_reply" or "low_confidence":
    - "needs_reply": a genuine business conversation with a real person — even a first-time sender, if the content reads like an actual specific ask, question, or opportunity tied to real names/details/deals.
    - "low_confidence": likely cold outreach or ambiguous — generic sales pitches (even personalized ones), vague templated language ("quick call?", "reduce costs by X%", canned value props), or anything where you can't tell if this is a real relationship. A sender who has sent multiple follow-up messages without ever getting a reply is a strong cold-outreach signal, not evidence of a real relationship — judge by the CONTENT's specificity, not just message count.
+   - Automated system/product notifications (status alerts, "your project has been paused/resumed", billing receipts, usage reports, no-reply automated senders) are ALWAYS "low_confidence", even when they name specific projects, accounts, or numbers — specificity alone doesn't mean a real person is waiting on a reply. Judge whether a human is actually expecting a response from the recipient, not just whether the content is detailed. Two emails about the same underlying automated event (e.g. a status-change notice followed by its confirmation) should both be classified the same way.
 
 2. TIER — "today" (genuinely time-sensitive/urgent), "week" (normal priority), or "fyi" (low urgency/informational, even if it needs an eventual reply).
 
@@ -51,19 +58,25 @@ Label: "Direct with numbers"
 export async function classifyAndDraft(thread: ThreadForClassification): Promise<ClassifyAndDraftResult> {
   const client = openaiClient();
 
+  const replyPromiseHours = thread.replyPromiseHours ?? 24;
   const userPrompt = `Mailbox owner: ${thread.mailboxAddress}
 Sender: ${thread.senderName} <${thread.senderEmail}>
 Subject: ${thread.subject}
 Messages in thread (within scan window): ${thread.messageCount}
 Hours waited since last message: ${Math.round(thread.waitedHours)}
+The user's reply-promise window is ${replyPromiseHours} hours — weigh this when picking TIER: a needs_reply thread already past or close to this window is "today", comfortably inside it is "week".
 
 Body of the most recent message:
 ${thread.body.slice(0, 4000)}`;
 
+  const systemPrompt = thread.draftVoice
+    ? `${SYSTEM_PROMPT}\n\nThe user has also set a specific voice preference for drafts, which takes priority over the tone guidance above where they conflict: "${thread.draftVoice}"`
+    : SYSTEM_PROMPT;
+
   const completion = await client.chat.completions.parse({
     model: openaiModel(),
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     response_format: zodResponseFormat(ClassifyAndDraftSchema, "classify_and_draft"),
@@ -79,6 +92,14 @@ ${thread.body.slice(0, 4000)}`;
 const FollowupRelevanceSchema = z.object({
   warranted: z.boolean(),
   why: z.string(),
+  drafts: z
+    .array(
+      z.object({
+        label: z.string(),
+        text: z.string(),
+      })
+    )
+    .length(2),
 });
 
 export type FollowupRelevanceResult = z.infer<typeof FollowupRelevanceSchema>;
@@ -106,7 +127,9 @@ WARRANTED = false when any of these apply:
 - The message itself already states the topic will be resolved another way soon (e.g. "we'll cover this on our next call", "talk more at the meeting", "I'll follow up with specs during our next call") — nudging again would be redundant with an already-planned touchpoint.
 - The content is templated/administrative (out-of-office, calendar logistics, scheduling housekeeping) rather than a substantive ask.
 
-WHY — one short, specific sentence referencing actual content from the message, explaining the verdict either way.`;
+WHY — one short, specific sentence referencing actual content from the message, explaining the verdict either way.
+
+DRAFTS — exactly two distinct follow-up nudge options, only meaningful when WARRANTED is true (still provide two reasonable attempts if false, since the schema requires it, but they'll be discarded). Tone: warm-but-concrete — reference the original ask specifically, don't just say "following up." Each draft needs a short label describing its angle (e.g. "Brief nudge", "Offers to hop on a call").`;
 
 export async function classifyFollowupRelevance(
   message: SentMessageForClassification

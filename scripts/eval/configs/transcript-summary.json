@@ -1,0 +1,140 @@
+{
+  "product_name": "FollowUp OS — summarizeTranscript",
+  "product_description": "Summarizes a meeting-recorder transcript (Otter/Optiverse/etc.) into a short summary, action items, and two follow-up drafts, for a post-meeting dashboard. Runs once per matched transcript, on gpt-4o-mini.",
+  "app_model": "openai/gpt-4o-mini",
+  "grader_model": "anthropic/claude-haiku-4-5",
+  "decision_point": "summarize_transcript",
+  "dimensions": [
+    {
+      "id": "summary_conciseness",
+      "name": "H1: Summary Conciseness",
+      "hhh": "Helpful",
+      "question": "Is the summary 2-3 short sentences max, naming attendee + the key outcome?",
+      "low": "Summary is a multi-paragraph wall of text — effectively the raw transcript, not a summary.",
+      "medium": "Summary is short but misses the single most important decision or outcome from the call.",
+      "high": "2-3 tight sentences naming who it was with and the single most important outcome/decision."
+    },
+    {
+      "id": "action_item_fidelity",
+      "name": "H2: Action-Item Fidelity",
+      "hhh": "Helpful",
+      "question": "Are action items phrased \"Person: does what,\" complete, and never invented when none existed?",
+      "low": "Action items are empty despite the transcript clearly stating next steps, or items are invented that were never discussed.",
+      "medium": "Action items present but phrasing is inconsistent (missing the \"Person:\" structure) or one real item is missed.",
+      "high": "Every concrete next step mentioned in the call appears as \"Person: does what,\" nothing invented, nothing omitted."
+    },
+    {
+      "id": "draft_groundedness",
+      "name": "H3: Draft Groundedness",
+      "hhh": "Helpful",
+      "question": "Do both drafts reference specific action items or details actually from the call?",
+      "low": "Drafts are generic (\"great catching up!\") with no reference to anything discussed.",
+      "medium": "Drafts vaguely reference \"our chat\" but don't name the specific decision or action item.",
+      "high": "Both drafts name a specific decision or action item from the call, with a distinct angle each."
+    },
+    {
+      "id": "no_verbatim_boilerplate",
+      "name": "Ho1: No Verbatim/Boilerplate",
+      "hhh": "Honest",
+      "question": "Does the summary avoid quoting the transcript verbatim or including tool-generated boilerplate (join links, timestamps, diarization noise)?",
+      "low": "Summary includes recorder boilerplate (join links, \"this meeting was recorded by...\") or copies transcript text verbatim.",
+      "medium": "Mostly clean but one stray boilerplate fragment or verbatim phrase slips through.",
+      "high": "Summary is entirely the model's own concise language — no boilerplate, no verbatim transcript excerpts."
+    },
+    {
+      "id": "no_fabricated_commitments",
+      "name": "Ha1: No Fabricated Commitments",
+      "hhh": "Harmless",
+      "question": "Does the summary/action items avoid inventing outcomes or commitments not actually discussed?",
+      "low": "States a decision or commitment that isn't supported by the transcript content.",
+      "medium": "Mostly grounded but one action item is a plausible-sounding guess not clearly stated in the call.",
+      "high": "Every stated outcome and action item is directly traceable to something said in the transcript."
+    }
+  ],
+  "test_cases": [
+    {
+      "label": "BAD",
+      "score": 20,
+      "input_type": "Raw transcript dumped as summary",
+      "input_description": "Long transcript with Otter.ai boilerplate and a clearly-stated next step (\"I'll send the redlines by Friday\"), but no summarization occurred.",
+      "ground_truth": "Should be a 2-sentence summary naming the 24-month renewal decision, with \"Ellen: send redlines by Friday\" as an action item.",
+      "evals": {
+        "summary_conciseness": "FAIL — summary is the entire transcript, boilerplate included.",
+        "action_item_fidelity": "FAIL — actionItems is empty despite a clearly stated next step in the transcript.",
+        "draft_groundedness": "FAIL — drafts are generic, reference nothing from the call.",
+        "no_verbatim_boilerplate": "FAIL — includes the Otter.ai join-link boilerplate verbatim.",
+        "no_fabricated_commitments": "PASS — nothing fabricated, but only because nothing was summarized at all."
+      },
+      "candidate_input": {
+        "title": "Steinweg Logistics — Renewal Call",
+        "attendeeName": "Marcus Owusu",
+        "transcriptBody": "This meeting was recorded by Otter.ai. Join link: meet.google.com/abc-defg-hij. Transcription may contain errors.\n\nMarcus: Thanks for jumping on, Ellen. So where are we landing on the renewal term?\nEllen: I think the 24-month term makes the most sense given where pricing is right now.\nMarcus: Agreed, let's lock that in. Can you send over the redlined MSA?\nEllen: Yep, I'll get the redlines to you by Friday.\nMarcus: Perfect, I'll review with legal once I have it.\nEllen: Sounds good, talk soon.\n[Recording ended]"
+      },
+      "candidate_output": {
+        "summary": "This meeting was recorded by Otter.ai. Join link: meet.google.com/abc-defg-hij. Transcription may contain errors.\n\nMarcus: Thanks for jumping on, Ellen. So where are we landing on the renewal term?\nEllen: I think the 24-month term makes the most sense given where pricing is right now.\nMarcus: Agreed, let's lock that in. Can you send over the redlined MSA?\nEllen: Yep, I'll get the redlines to you by Friday.\nMarcus: Perfect, I'll review with legal once I have it.\nEllen: Sounds good, talk soon.\n[Recording ended]",
+        "actionItems": [],
+        "drafts": [
+          { "label": "Friendly", "text": "Hi Marcus,\n\nGreat catching up today!\n\nBest,\nEllen" },
+          { "label": "Brief", "text": "Hi Marcus,\n\nThanks for the call, talk soon.\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "AVERAGE",
+      "score": 55,
+      "input_type": "Short summary, but misses the key decision",
+      "input_description": "Call reaches a clear pricing decision and two concrete action items, but the summary stays generic and the action items are phrased inconsistently.",
+      "ground_truth": "Summary should name the 24-month term decision; action items should read \"Ellen: send updated quote\" / \"Priya: loop in CFO\".",
+      "evals": {
+        "summary_conciseness": "PARTIAL — short enough, but generic and misses the actual decision reached.",
+        "action_item_fidelity": "PARTIAL — both real items present but not phrased \"Person: does what.\"",
+        "draft_groundedness": "PARTIAL — drafts reference \"our chat\" but not the specific decision or items.",
+        "no_verbatim_boilerplate": "PASS — no boilerplate or verbatim quoting.",
+        "no_fabricated_commitments": "PASS — nothing invented."
+      },
+      "candidate_input": {
+        "title": "Meridian Health — Pricing Call",
+        "attendeeName": "Priya Nair",
+        "transcriptBody": "Priya: So after going back and forth, I think the 24-month term works best for us.\nEllen: Great, I'll get you an updated quote reflecting that.\nPriya: Perfect, I'll loop in our CFO on my end once I have it.\nEllen: Sounds good, I'll send that over soon."
+      },
+      "candidate_output": {
+        "summary": "Had a call with Priya about pricing. We discussed next steps.",
+        "actionItems": ["Send updated quote", "Loop in CFO"],
+        "drafts": [
+          { "label": "Follow-up", "text": "Hi Priya,\n\nFollowing up on our chat — I'll get that over to you soon.\n\nBest,\nEllen" },
+          { "label": "Brief", "text": "Hi Priya,\n\nThanks for the call, talk soon.\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "GOOD",
+      "score": 85,
+      "input_type": "Clean summary naming the decision + concrete action items",
+      "input_description": "Same renewal call as the BAD case, but properly summarized: names the decision, phrases both action items correctly, drafts reference specifics.",
+      "ground_truth": "2-sentence summary naming the 24-month decision and the redline handoff; both action items phrased \"Person: does what.\"",
+      "evals": {
+        "summary_conciseness": "PASS — 2 tight sentences naming attendee and the actual decision.",
+        "action_item_fidelity": "PASS — both items phrased \"Person: does what,\" nothing invented or omitted.",
+        "draft_groundedness": "PASS — both drafts reference the redlines/legal-review specifics.",
+        "no_verbatim_boilerplate": "PASS — no boilerplate, no verbatim transcript text.",
+        "no_fabricated_commitments": "PASS — every claim traces directly to the transcript."
+      },
+      "candidate_input": {
+        "title": "Steinweg Logistics — Renewal Call",
+        "attendeeName": "Marcus Owusu",
+        "transcriptBody": "This meeting was recorded by Otter.ai. Join link: meet.google.com/abc-defg-hij. Transcription may contain errors.\n\nMarcus: Thanks for jumping on, Ellen. So where are we landing on the renewal term?\nEllen: I think the 24-month term makes the most sense given where pricing is right now.\nMarcus: Agreed, let's lock that in. Can you send over the redlined MSA?\nEllen: Yep, I'll get the redlines to you by Friday.\nMarcus: Perfect, I'll review with legal once I have it.\nEllen: Sounds good, talk soon.\n[Recording ended]"
+      },
+      "candidate_output": {
+        "summary": "Marcus confirmed Steinweg is renewing on the 24-month term. Ellen will send the redlined MSA by Friday for Marcus to review with legal.",
+        "actionItems": [
+          "Ellen: send the redlined MSA by Friday",
+          "Marcus: review redlines with legal"
+        ],
+        "drafts": [
+          { "label": "Direct", "text": "Hi Marcus,\n\nGreat to lock in the 24-month term today. I'll have the redlined MSA over to you by Friday.\n\nBest,\nEllen" },
+          { "label": "Heads-up on timing", "text": "Hi Marcus,\n\nConfirming I'll get you the redlines by Friday so you've got time to loop in legal before we finalize.\n\nBest,\nEllen" }
+        ]
+      }
+    }
+  ]
+}

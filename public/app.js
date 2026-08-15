@@ -299,14 +299,24 @@ const state = {
   expanded: {},
   feedback: {},
   feedbackNotes: {},
-  sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true },
+  sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true, mcp: false },
   dismissedIds: ["x1", "x2"],
   inboxOpen: true,
   activeMailbox: DEFAULT_MAILBOX,
   activeNav: "inbox",
   openFilter: null,
   openMoveMenu: null,
+  openMailboxMenu: null,
+  editingProfile: false,
+  profileNameDraft: "",
+  draftVoiceDraft: "",
+  ownerName: "",
+  ownerEmail: "",
+  replyPromiseHours: 24,
+  draftVoice: "",
   confirmSend: null,
+  confirmRescan: false,
+  scanning: false,
   defaultMailbox: DEFAULT_MAILBOX,
   filterVals: { priority: null, mailbox: DEFAULT_MAILBOX, date: null, sender: null },
   spin: 0,
@@ -875,6 +885,8 @@ function renderVals() {
     inboxChevron: s.inboxOpen ? "ti-chevron-up" : "ti-chevron-down",
     totalUnread: MAILBOXES.reduce((a, m) => a + m.count, 0),
     lastScanned: s.scanned,
+    scanning: s.scanning,
+    confirmRescan: s.confirmRescan,
     spin: s.spin,
 
     navItems: [
@@ -904,7 +916,7 @@ function renderVals() {
       const st = MB_STATE[m.state];
       const on = s.scanOff.indexOf(m.address) < 0;
       return {
-        address: m.address, role: m.role, sync: m.sync, dot: m.dot,
+        id: m.id, address: m.address, role: m.role, sync: m.sync, dot: m.dot,
         initial: m.address.slice(0, 1).toUpperCase(),
         stLabel: st.label, stBg: st.bg, stColor: st.color, stIcon: st.icon,
         needsFix: m.state === "reauth",
@@ -912,10 +924,19 @@ function renderVals() {
         switchBg: on ? "#13161c" : "#e1e4e9",
         knobLeft: on ? "17px" : "3px",
         switchLabel: on ? "Scanning" : "Paused",
-        isDefault: m.address === s.defaultMailbox
+        isDefault: m.address === s.defaultMailbox,
+        menuOpen: s.openMailboxMenu === m.id
       };
     }),
     mailboxTotal: MAILBOXES.length,
+    ownerName: s.ownerName || "Your name",
+    ownerEmail: s.ownerEmail,
+    ownerInitials: (s.ownerName || s.ownerEmail || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase(),
+    editingProfile: s.editingProfile,
+    profileNameDraft: s.profileNameDraft,
+    replyPromiseHours: s.replyPromiseHours,
+    draftVoice: s.draftVoice,
+    draftVoiceDraft: s.draftVoiceDraft,
 
     filters: defs.filter(d => d.key !== "priority" || s.view === "inbox").map(d => {
       const val = s.filterVals[d.key];
@@ -1089,6 +1110,9 @@ function renderVals() {
 
     sentOpen: s.sections.sent,
     sentChevron: s.sections.sent ? "ti-chevron-up" : "ti-chevron-down",
+
+    mcpOpen: s.sections.mcp,
+    mcpChevron: s.sections.mcp ? "ti-chevron-up" : "ti-chevron-down",
     sentCount: SENT.filter(m => !mbF || m.mailbox === mbF).length
       + s.sentIds.filter(id => { const t = ALL.filter(x => x.id === id)[0]; return t && (!mbF || t.mailbox === mbF); }).length,
     sent: s.sentIds.filter(id => { const t = ALL.filter(x => x.id === id)[0]; return t && (!mbF || t.mailbox === mbF); }).map(id => {
@@ -1237,10 +1261,10 @@ root.innerHTML = `
 
   <div style="margin-top:auto;padding:14px 16px 16px">
     <div style="border-top:1px solid #eeeff2;padding-top:12px;display:flex;align-items:center;gap:10px">
-      <div style="width:32px;height:32px;flex:none;border-radius:999px;background:linear-gradient(135deg,#cfe2f7,#f7ddc4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3c4a5c">EI</div>
+      <div id="ownerAvatar" style="width:32px;height:32px;flex:none;border-radius:999px;background:linear-gradient(135deg,#cfe2f7,#f7ddc4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3c4a5c"></div>
       <div style="min-width:0;flex:1">
-        <div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ellen Ivanović</div>
-        <div style="font-size:11px;color:#9aa1ac;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Partnerships</div>
+        <div id="ownerNameLabel" style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        <div id="ownerEmailLabel" style="font-size:11px;color:#9aa1ac;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
       </div>
       <i class="ti ti-selector" style="font-size:15px;color:#c3c8d1"></i>
     </div>
@@ -1277,6 +1301,13 @@ root.innerHTML = `
     </div>
   </header>
 
+  <div id="scanBanner" class="hidden" style="display:flex;align-items:center;gap:10px;padding:9px 24px;background:#f1f7fd;border-bottom:1px solid #d9ebf9">
+    <span style="font-size:12px;font-weight:700;color:#0b6fb8">Scanning your inbox…</span>
+    <div class="scan-bar-track" style="flex:1;max-width:220px;height:5px;border-radius:999px">
+      <div class="scan-bar-fill" style="height:5px;border-radius:999px"></div>
+    </div>
+  </div>
+
   <main id="mainArea" style="flex:1">
     <div id="view-home" class="view-container"></div>
     <div id="view-inbox" class="view-container hidden"></div>
@@ -1297,6 +1328,7 @@ root.innerHTML = `
 </div>
 
 <div id="confirmSendRoot"></div>
+<div id="confirmRescanRoot"></div>
 `;
 
 // ---------------------------------------------------------------------------
@@ -1324,10 +1356,16 @@ function renderShell(v) {
   document.getElementById("filtersRow").classList.toggle("hidden", !v.showFilters);
   document.getElementById("mainArea").style.padding = v.mainPad;
   document.getElementById("bottomNav").classList.toggle("hidden", !v.isMobile);
+  document.getElementById("scanBanner").classList.toggle("hidden", !v.scanning);
 
   // ----- scope pill -----
   document.getElementById("scopeLabel").textContent = v.scopeLabel;
   document.getElementById("scopeNote").textContent = v.scopeNote;
+
+  // ----- sidebar account footer -----
+  document.getElementById("ownerAvatar").textContent = v.ownerInitials;
+  document.getElementById("ownerNameLabel").textContent = v.ownerName;
+  document.getElementById("ownerEmailLabel").textContent = v.ownerEmail;
 
   // ----- nav: home / inbox highlighting -----
   document.getElementById("navHome").style.background = v.homeBg;
@@ -2193,8 +2231,21 @@ function mailboxRowHtml(mb) {
         <button data-action="toggleScan" data-mailbox="${esc(mb.address)}" aria-label="Toggle scanning" style="position:relative;width:36px;height:21px;flex:none;border:0;border-radius:999px;background:${mb.switchBg};cursor:pointer;padding:0;transition:background .18s">
           <span style="position:absolute;top:3px;left:${mb.knobLeft};width:15px;height:15px;border-radius:999px;background:#fff;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span>
         </button>
-        <button aria-label="Mailbox options" class="hover-pill-btn" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer">
-          <i class="ti ti-dots" style="font-size:15px;color:#9aa1ac"></i></button>
+        <div style="position:relative">
+          <button data-action="toggleMailboxMenu" data-id="${esc(mb.id)}" aria-label="Mailbox options" class="hover-pill-btn" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer">
+            <i class="ti ti-dots" style="font-size:15px;color:#9aa1ac"></i></button>
+          ${mb.menuOpen ? `
+          <div style="position:absolute;top:36px;right:0;z-index:50;min-width:174px;background:#fff;border:1px solid #eceef1;border-radius:14px;box-shadow:0 18px 40px -12px rgba(16,24,40,.18),0 2px 6px rgba(16,24,40,.05);padding:6px">
+            <button data-action="reconnectMailbox" data-address="${esc(mb.address)}" class="hover-filter-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:10px;cursor:pointer;text-align:left">
+              <i class="ti ti-refresh" style="font-size:14px;color:#9aa1ac"></i>
+              <span style="font-size:12.5px;font-weight:600;color:#13161c">Reconnect</span>
+            </button>
+            <button data-action="removeMailbox" data-id="${esc(mb.id)}" data-address="${esc(mb.address)}" class="hover-filter-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:10px;cursor:pointer;text-align:left">
+              <i class="ti ti-trash" style="font-size:14px;color:#c0392b"></i>
+              <span style="font-size:12.5px;font-weight:600;color:#c0392b">Remove mailbox</span>
+            </button>
+          </div>` : ""}
+        </div>
       </div>
     </div>
     ${mb.needsFix ? `
@@ -2243,34 +2294,51 @@ function renderSettings(v) {
 
   <div style="background:#fff;border:1px solid #eff0f3;border-radius:20px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.04);margin-bottom:34px">
     <div style="display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:1px solid #f2f3f6">
-      <div style="width:52px;height:52px;flex:none;border-radius:999px;background:linear-gradient(135deg,#cfe2f7,#f7ddc4);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#3c4a5c">EI</div>
+      <div style="width:52px;height:52px;flex:none;border-radius:999px;background:linear-gradient(135deg,#cfe2f7,#f7ddc4);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#3c4a5c">${esc(v.ownerInitials)}</div>
       <div style="flex:1;min-width:0">
-        <p style="margin:0;font-size:15.5px;font-weight:800;letter-spacing:-.2px">Ellen Ivanović</p>
-        <p style="margin:2px 0 0;font-size:12.5px;font-weight:500;color:#9aa1ac">Partnerships · HeartCount · ellen@heartcount.com</p>
+        ${v.editingProfile
+          ? `<input id="profileNameInput" type="text" value="${esc(v.profileNameDraft)}" style="width:100%;max-width:280px;padding:7px 10px;font-size:14px;font-weight:700;border:1px solid #bfdcf6;border-radius:9px;outline:none">`
+          : `<p style="margin:0;font-size:15.5px;font-weight:800;letter-spacing:-.2px">${esc(v.ownerName)}</p>`}
+        <p style="margin:2px 0 0;font-size:12.5px;font-weight:500;color:#9aa1ac">${esc(v.ownerEmail)}</p>
       </div>
-      <button class="hover-restore" style="flex:none;height:34px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#13161c;cursor:pointer">Edit profile</button>
+      ${v.editingProfile
+        ? `<button data-action="cancelEditProfile" class="hover-restore" style="flex:none;height:34px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#13161c;cursor:pointer">Cancel</button>
+           <button data-action="saveEditProfile" class="hover-dark-btn" style="flex:none;height:34px;padding:0 15px;border:0;border-radius:999px;background:#13161c;color:#fff;font-size:12px;font-weight:700;cursor:pointer">Save</button>`
+        : `<button data-action="editProfile" class="hover-restore" style="flex:none;height:34px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#13161c;cursor:pointer">Edit profile</button>
+           <button data-action="signOut" class="hover-restore" style="flex:none;height:34px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#c0392b;cursor:pointer">Sign out</button>`}
     </div>
     <div style="display:grid;grid-template-columns:${v.acctCols};gap:14px;padding-top:16px">
       <div>
         <p style="margin:0 0 3px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Scan cycle</p>
-        <p style="margin:0;font-size:13px;font-weight:600">Every 15 minutes</p>
+        <p style="margin:0;font-size:13px;font-weight:600">On open, or manual refresh</p>
       </div>
       <div>
         <p style="margin:0 0 3px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Reply promise</p>
-        <p style="margin:0;font-size:13px;font-weight:600">24 hours</p>
+        ${v.editingProfile
+          ? `<div style="display:flex;align-items:center;gap:6px"><input id="replyPromiseInput" type="number" min="1" max="720" value="${esc(String(v.replyPromiseHours))}" style="width:64px;padding:6px 8px;font-size:13px;font-weight:600;border:1px solid #bfdcf6;border-radius:8px;outline:none"><span style="font-size:12.5px;color:#9aa1ac">hours</span></div>`
+          : `<p style="margin:0;font-size:13px;font-weight:600">${esc(String(v.replyPromiseHours))} hours</p>`}
       </div>
       <div>
         <p style="margin:0 0 3px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Draft voice</p>
-        <p style="margin:0;font-size:13px;font-weight:600">Direct, warm, no em dashes</p>
+        ${v.editingProfile
+          ? `<input id="draftVoiceInput" type="text" value="${esc(v.draftVoiceDraft)}" placeholder="e.g. Direct, warm, no em dashes" style="width:100%;padding:6px 8px;font-size:13px;font-weight:600;border:1px solid #bfdcf6;border-radius:8px;outline:none">`
+          : `<p style="margin:0;font-size:13px;font-weight:600">${esc(v.draftVoice || "Warm-but-concrete (default)")}</p>`}
       </div>
     </div>
   </div>
 
-  <div style="margin-bottom:16px">
-    <h2 style="margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.4px">AI assistant connectors</h2>
-    <p style="margin:0;font-size:13px;color:#5d6470">Let an AI assistant query this dashboard directly — e.g. "did I reply to Marcus about the Q3 pricing?" — without opening the app.</p>
+  <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+    <div>
+      <h2 style="margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.4px">AI assistant connectors</h2>
+      <p style="margin:0;font-size:13px;color:#5d6470">Let an AI assistant query this dashboard directly — e.g. "did I reply to Marcus about the Q3 pricing?" — without opening the app.</p>
+    </div>
+    <button data-action="toggleSection" data-key="mcp" style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer" class="hover-pill-btn">
+      <i class="ti ${v.mcpChevron}" style="font-size:16px;color:#40464f"></i>
+    </button>
   </div>
 
+  <div class="expand-wrap${v.mcpOpen ? " expand-wrap--open" : ""}">
+    <div class="expand-inner">
   <div style="background:#fff;border:1px solid #eff0f3;border-radius:20px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.04)">
     <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid #f2f3f6">
       <div style="width:36px;height:36px;flex:none;border-radius:11px;background:linear-gradient(135deg,#0b8ee8,#f08a20);display:flex;align-items:center;justify-content:center"><i class="ti ti-sparkles" style="font-size:16px;color:#fff"></i></div>
@@ -2307,6 +2375,8 @@ function renderSettings(v) {
 
     <p style="margin:16px 0 0;font-size:11.5px;font-weight:500;color:#9aa1ac">ChatGPT, Gemini, Perplexity, and additional transcript-tool connectors are planned for a later phase.</p>
   </div>
+    </div>
+  </div>
 
   </div>
   `;
@@ -2342,6 +2412,26 @@ function renderConfirmSendModal() {
   `;
 }
 
+function renderConfirmRescanModal(v) {
+  const el = document.getElementById("confirmRescanRoot");
+  if (!v.confirmRescan) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.45);padding:20px">
+    <div style="background:#fff;border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35)">
+      <h3 style="margin:0 0 8px;font-size:16px;font-weight:800;letter-spacing:-.2px">Rescan your inbox now?</h3>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.55;color:#5d6470">Last scanned ${esc(v.lastScanned)}. This re-checks every connected mailbox for new mail — it can take a moment.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button data-action="cancelRescan" class="hover-pill-btn-color" style="height:38px;padding:0 16px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:#40464f;cursor:pointer">Cancel</button>
+        <button data-action="confirmRescanYes" class="hover-dark-btn" style="height:38px;padding:0 18px;border:0;border-radius:999px;background:#13161c;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">Rescan</button>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // MASTER RENDER
 // ---------------------------------------------------------------------------
@@ -2355,6 +2445,7 @@ function renderAll() {
   renderSent(v);
   renderDismissed(v);
   renderConfirmSendModal();
+  renderConfirmRescanModal(v);
   renderSettings(v);
   renderThread(v);
 }
@@ -2405,9 +2496,20 @@ document.addEventListener("click", (e) => {
       break;
 
     case "refresh":
-      state.spin += 360;
-      state.scanned = "just now";
+      state.confirmRescan = true;
       renderAll();
+      break;
+
+    case "cancelRescan":
+      state.confirmRescan = false;
+      renderAll();
+      break;
+
+    case "confirmRescanYes":
+      state.confirmRescan = false;
+      state.spin += 360;
+      renderAll();
+      scanAndLoad();
       break;
 
     case "toggleFilter":
@@ -2597,14 +2699,96 @@ document.addEventListener("click", (e) => {
     }
 
     case "reconnectMailbox":
-      flash("Reconnect flow opened for " + el.dataset.address);
+    case "addMailbox":
+      // Full navigation, not fetch — this has to leave the SPA to reach
+      // Google's real consent screen. Lands back on "/" via the callback's
+      // redirect once done (see the ?mailboxConnected/?mailboxError handling
+      // in the bootstrap section below).
+      window.location.href = "/api/mailboxes/connect";
+      break;
+
+    case "toggleMailboxMenu":
+      state.openMailboxMenu = state.openMailboxMenu === el.dataset.id ? null : el.dataset.id;
       renderAll();
       break;
 
-    case "addMailbox":
-      flash("Google account picker opened — connect another mailbox");
+    case "removeMailbox": {
+      const address = el.dataset.address;
+      state.openMailboxMenu = null;
+      if (!window.confirm(`Remove ${address}? This permanently deletes its scanned threads, sent history, and follow-ups. This can't be undone.`)) {
+        renderAll();
+        break;
+      }
+      fetch("/api/mailboxes/" + el.dataset.id, { method: "DELETE" })
+        .then(res => {
+          if (!res.ok) throw new Error("Request failed");
+          window.location.reload();
+        })
+        .catch(err => {
+          console.error("Failed to remove mailbox", err);
+          flash("Couldn't remove that mailbox — try again");
+          renderAll();
+        });
       renderAll();
       break;
+    }
+
+    case "signOut":
+      el.disabled = true;
+      fetch("/api/logout", { method: "POST" })
+        .then(() => { window.location.href = "/connect"; })
+        .catch(err => {
+          console.error("Sign out failed", err);
+          el.disabled = false;
+          flash("Couldn't sign out — try again");
+          renderAll();
+        });
+      break;
+
+    case "editProfile":
+      state.editingProfile = true;
+      state.profileNameDraft = state.ownerName || "";
+      state.draftVoiceDraft = state.draftVoice || "";
+      renderAll();
+      document.getElementById("profileNameInput")?.focus();
+      break;
+
+    case "cancelEditProfile":
+      state.editingProfile = false;
+      renderAll();
+      break;
+
+    case "saveEditProfile": {
+      const nameInput = document.getElementById("profileNameInput");
+      const replyInput = document.getElementById("replyPromiseInput");
+      const voiceInput = document.getElementById("draftVoiceInput");
+      const name = (nameInput ? nameInput.value : state.profileNameDraft).trim();
+      const replyPromiseHours = replyInput ? parseInt(replyInput.value, 10) : state.replyPromiseHours;
+      const draftVoice = (voiceInput ? voiceInput.value : state.draftVoiceDraft).trim();
+      if (!name) { flash("Name can't be empty"); renderAll(); break; }
+      if (!Number.isFinite(replyPromiseHours) || replyPromiseHours < 1) { flash("Reply promise must be at least 1 hour"); renderAll(); break; }
+      el.disabled = true;
+      fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, replyPromiseHours, draftVoice }),
+      })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+        .then(data => {
+          state.ownerName = data.name;
+          state.replyPromiseHours = data.replyPromiseHours;
+          state.draftVoice = data.draftVoice;
+          state.editingProfile = false;
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to save profile", err);
+          el.disabled = false;
+          flash("Couldn't save — try again");
+          renderAll();
+        });
+      break;
+    }
 
     case "setDefaultMailbox": {
       const address = el.dataset.address;
@@ -2893,9 +3077,37 @@ DISMISSED.length = 0;
 Object.keys(DRAFTS).forEach((k) => delete DRAFTS[k]);
 state.dismissedIds = [];
 
+// Land here after app/api/mailboxes/callback redirects back from Google —
+// surface the result once, then strip the query params so a reload doesn't
+// re-show the toast.
+(function handleMailboxReturnParams() {
+  const params = new URLSearchParams(window.location.search);
+  const connected = params.get("mailboxConnected");
+  const error = params.get("mailboxError");
+  if (connected) flash("Mailbox connected");
+  else if (error) flash(error);
+  if (connected || error) {
+    params.delete("mailboxConnected");
+    params.delete("mailboxError");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : ""));
+  }
+})();
+
 renderAll();
 
-async function loadLiveData() {
+// Shared by the initial page load and the manual Rescan button — both need
+// the identical scan-then-refetch sequence. No real progress % is available
+// from the server (a single synchronous /api/scan call, no incremental
+// reporting), so state.scanning only drives the indeterminate bar in
+// #scanBanner, not an actual percentage.
+let scanInFlight = false;
+async function scanAndLoad() {
+  if (scanInFlight) return;
+  scanInFlight = true;
+  state.scanning = true;
+  renderAll();
+
   try {
     await fetch("/api/scan", { method: "POST" });
     const res = await fetch("/api/dashboard");
@@ -2908,6 +3120,15 @@ async function loadLiveData() {
     }
     const data = await res.json();
 
+    MAILBOXES.length = 0;
+    THREADS.length = 0;
+    LOWCONF.length = 0;
+    FOLLOWUPS.length = 0;
+    SENT.length = 0;
+    MEETINGS.length = 0;
+    DISMISSED.length = 0;
+    Object.keys(DRAFTS).forEach((k) => delete DRAFTS[k]);
+
     MAILBOXES.push(...data.mailboxes);
     THREADS.push(...data.threads);
     LOWCONF.push(...data.lowConf);
@@ -2916,10 +3137,25 @@ async function loadLiveData() {
     MEETINGS.push(...data.meetings);
     DISMISSED.push(...data.dismissed);
     Object.assign(DRAFTS, data.drafts);
+    state.ownerName = data.ownerName || "";
+    state.ownerEmail = data.ownerEmail || "";
+    state.replyPromiseHours = data.replyPromiseHours || 24;
+    state.draftVoice = data.draftVoice || "";
     // Real dismissed items come back already-dismissed from the server —
     // dismissedIds still drives the gone()/live() filters that hide them
     // from the active-queue arrays.
     state.dismissedIds = data.dismissed.map((d) => d.id);
+    // formatSync (server-side) returns e.g. "scanned 3 min ago" — strip the
+    // verb since the pill already says "Last scanned {this}".
+    // formatSync (server-side) returns either "scanned N min/h ago" or the
+    // standalone sentence "not scanned yet" — the pill template always reads
+    // "Last scanned {this}" / "· scanned {this}", so only the first form
+    // (which has a real "scanned " prefix to strip) fits; anything else
+    // (including "not scanned yet") falls back to "never" rather than
+    // producing "scanned not scanned yet".
+    state.scanned = data.mailboxes[0] && data.mailboxes[0].sync.startsWith("scanned ")
+      ? data.mailboxes[0].sync.slice(8)
+      : "never";
 
     if (data.mailboxes[0]) {
       const first = data.mailboxes[0].address;
@@ -2927,11 +3163,14 @@ async function loadLiveData() {
       state.defaultMailbox = first;
       state.filterVals.mailbox = first;
     }
-
-    renderAll();
   } catch (err) {
     console.error("Failed to load live dashboard data", err);
+    flash("Couldn't refresh — try again");
+  } finally {
+    state.scanning = false;
+    scanInFlight = false;
+    renderAll();
   }
 }
 
-loadLiveData();
+scanAndLoad();

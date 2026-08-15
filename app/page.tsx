@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isOnboardingComplete, hasConnectedMailbox } from "@/lib/onboarding";
 import AppShell from "./AppShell";
+import LandingPage from "./LandingPage";
 
 export default async function Home() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/connect");
+    return <LandingPage />;
   }
 
   const ownerId = session.user.id;
@@ -15,9 +16,12 @@ export default async function Home() {
   if (!(await hasConnectedMailbox(ownerId))) {
     redirect("/connect");
   }
-  if (!(await isOnboardingComplete(ownerId))) {
-    redirect("/onboarding");
-  }
+  // No longer redirects to a blocking /onboarding page — the dashboard
+  // renders immediately either way, and AppShell fetches candidates in the
+  // background + shows the VIP-picker as a modal once onboarding isn't
+  // complete (see 2026-08-07 feedback: the old synchronous per-mailbox Gmail
+  // scan blocked first paint, worse the more mailboxes an account has).
+  const onboardingComplete = await isOnboardingComplete(ownerId);
 
-  return <AppShell />;
+  return <AppShell onboardingComplete={onboardingComplete} />;
 }

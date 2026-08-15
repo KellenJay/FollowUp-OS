@@ -45,14 +45,20 @@ export async function runScan(ownerId: string) {
   if (mailboxError) throw new Error(`Failed to load mailboxes: ${mailboxError.message}`);
 
   const senderLookup = await loadSenderLookup(ownerId);
-  const { data: settings } = await supabase.from("app_settings").select("owner_name").eq("owner_id", ownerId).maybeSingle();
+  const { data: settings } = await supabase
+    .from("app_settings")
+    .select("owner_name, reply_promise_hours, draft_voice")
+    .eq("owner_id", ownerId)
+    .maybeSingle();
   const ownerName = settings?.owner_name ? normalizeName(settings.owner_name) : null;
+  const replyPromiseHours = settings?.reply_promise_hours ?? 24;
+  const draftVoice = settings?.draft_voice ?? undefined;
 
   const summary: Record<string, string> = {};
 
   for (const mailbox of mailboxes ?? []) {
     try {
-      await scanMailbox(mailbox as MailboxRow, senderLookup, ownerName);
+      await scanMailbox(mailbox as MailboxRow, senderLookup, ownerName, replyPromiseHours, draftVoice);
       await supabase
         .from("mailboxes")
         .update({ state: "ok", last_scanned_at: new Date().toISOString() })
@@ -69,7 +75,13 @@ export async function runScan(ownerId: string) {
   return summary;
 }
 
-async function scanMailbox(mailbox: MailboxRow, senderLookup: SenderLookup, ownerName: string | null) {
+async function scanMailbox(
+  mailbox: MailboxRow,
+  senderLookup: SenderLookup,
+  ownerName: string | null,
+  replyPromiseHours: number,
+  draftVoice: string | undefined
+) {
   const supabase = supabaseServer();
   const auth = oauthClientFor(mailbox);
 
@@ -134,6 +146,8 @@ async function scanMailbox(mailbox: MailboxRow, senderLookup: SenderLookup, owne
         mailboxAddress: mailbox.address,
         messageCount: t.messageCount,
         waitedHours: t.waitedHours,
+        replyPromiseHours,
+        draftVoice,
       });
     } catch (err) {
       result = {
@@ -290,7 +304,11 @@ async function scanMailbox(mailbox: MailboxRow, senderLookup: SenderLookup, owne
             businessDaysWaited: businessDays,
           });
         } catch (err) {
-          relevance = { warranted: true, why: `Classification failed (${(err as Error).message}) — flagged for manual review` };
+          relevance = {
+            warranted: true,
+            why: `Classification failed (${(err as Error).message}) — flagged for manual review`,
+            drafts: [],
+          };
         }
 
         if (relevance.warranted) {
@@ -298,6 +316,7 @@ async function scanMailbox(mailbox: MailboxRow, senderLookup: SenderLookup, owne
             sent_id: sentId,
             business_days_waited: businessDays,
             nudge_reasoning: relevance.why,
+            drafts: relevance.drafts,
           });
         }
       }

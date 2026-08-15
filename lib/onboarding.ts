@@ -27,21 +27,30 @@ export async function getOnboardingCandidates(ownerId: string): Promise<SenderCa
     .select("id, address, refresh_token_encrypted")
     .eq("owner_id", ownerId);
 
-  const merged = new Map<string, SenderCandidate>();
-  for (const mailbox of mailboxes ?? []) {
-    try {
-      const auth = oauthClientFor(mailbox as MailboxRow);
-      const candidates = await scanSenderCandidates(auth, mailbox.address);
-      for (const c of candidates) {
-        const existing = merged.get(c.address);
-        if (!existing || c.receivedCount + c.sentCount > existing.receivedCount + existing.sentCount) {
-          merged.set(c.address, c);
-        }
+  // Each mailbox's scan is independent — parallelized (2026-08-07) so N
+  // mailboxes no longer means N times the wait. Runs off the request path
+  // entirely now anyway (see app/api/onboarding/candidates), but this still
+  // matters since more mailboxes previously meant a linearly slower call.
+  const perMailbox = await Promise.all(
+    (mailboxes ?? []).map(async (mailbox) => {
+      try {
+        const auth = oauthClientFor(mailbox as MailboxRow);
+        return await scanSenderCandidates(auth, mailbox.address);
+      } catch {
+        // A mailbox with an auth problem just contributes no candidates —
+        // the regular scan surfaces the reconnect state separately.
+        return [];
       }
-    } catch {
-      // A mailbox with an auth problem just contributes no candidates —
-      // the regular scan surfaces the reconnect state separately.
-      continue;
+    })
+  );
+
+  const merged = new Map<string, SenderCandidate>();
+  for (const candidates of perMailbox) {
+    for (const c of candidates) {
+      const existing = merged.get(c.address);
+      if (!existing || c.receivedCount + c.sentCount > existing.receivedCount + existing.sentCount) {
+        merged.set(c.address, c);
+      }
     }
   }
 

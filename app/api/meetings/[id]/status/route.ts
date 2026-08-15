@@ -34,7 +34,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const { error } = await supabase
       .from("meetings")
-      .update({ state, updated_at: new Date().toISOString() })
+      .update({
+        state,
+        updated_at: new Date().toISOString(),
+        dismissed_at: state === "dismissed" ? new Date().toISOString() : null,
+      })
       .eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

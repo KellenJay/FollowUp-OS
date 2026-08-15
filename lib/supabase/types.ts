@@ -65,6 +65,7 @@ export interface Database {
           feedback: "up" | "down" | null;
           feedback_note: string | null;
           metadata: Record<string, unknown>;
+          dismissed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -130,6 +131,7 @@ export interface Database {
           ended_at: string | null;
           wait_deadline: string | null;
           metadata: Record<string, unknown>;
+          dismissed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -147,6 +149,8 @@ export interface Database {
           business_days_waited: number;
           nudge_reasoning: string | null;
           status: "pending" | "dismissed" | "sent";
+          drafts: { label: string; text: string }[];
+          dismissed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -205,6 +209,8 @@ export interface Database {
           owner_id: string;
           onboarding_completed_at: string | null;
           owner_name: string | null;
+          reply_promise_hours: number;
+          draft_voice: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["app_settings"]["Row"]> & {
           owner_id: string;

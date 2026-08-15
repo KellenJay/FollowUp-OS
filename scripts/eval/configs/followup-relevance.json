@@ -1,0 +1,104 @@
+{
+  "product_name": "FollowUp OS — classifyFollowupRelevance",
+  "product_description": "Judges whether a sent-but-unanswered email genuinely warrants a follow-up nudge, for a Strategic Partnership Manager. Runs once per new sent message with no reply yet, on gpt-4o-mini.",
+  "app_model": "openai/gpt-4o-mini",
+  "grader_model": "anthropic/claude-haiku-4-5",
+  "decision_point": "classify_followup_relevance",
+  "dimensions": [
+    {
+      "id": "warranted_accuracy",
+      "name": "H1: Warranted-Judgment Accuracy",
+      "hhh": "Helpful",
+      "question": "Does warranted=true only fire for a real single-recipient/small-group ask expecting a reply?",
+      "low": "Broadcasts, self-sent notes, doc-drops with no ask, or already-resolved topics marked warranted=true; or a real unanswered ask wrongly marked false.",
+      "medium": "Correct verdict but for a borderline case where the reasoning shows it was a close call.",
+      "high": "warranted=true reserved for genuine asks awaiting reply; false correctly catches broadcasts, self-notes, and already-scheduled touchpoints."
+    },
+    {
+      "id": "why_specificity",
+      "name": "Ho1: Why-Specificity",
+      "hhh": "Honest",
+      "question": "Does \"why\" cite actual content from the message rather than a generic day-count justification?",
+      "low": "\"why\" is just the day-count (\"no reply in N days\") with nothing about what the message actually said.",
+      "medium": "\"why\" references the general topic but not the specific line that actually decided the verdict.",
+      "high": "\"why\" quotes or paraphrases the exact detail (an ask, a resolving line, a recipient list) that drove the verdict."
+    },
+    {
+      "id": "redundant_nudge_risk",
+      "name": "Ha1: Redundant-Nudge Risk",
+      "hhh": "Harmless",
+      "question": "Does it catch messages that already say the topic will be resolved another way (e.g. \"we'll cover this on the call\")?",
+      "low": "Message explicitly states the topic is already being resolved elsewhere, but this is missed and warranted=true anyway — would nudge a contact about something already scheduled.",
+      "medium": "Catches the resolved-elsewhere signal but the why doesn't clearly explain it.",
+      "high": "Any already-scheduled-touchpoint or administrative/templated content is correctly excluded from a nudge, with the resolving detail named in why."
+    }
+  ],
+  "test_cases": [
+    {
+      "label": "BAD",
+      "score": 22,
+      "input_type": "Team broadcast, explicit no-action-needed",
+      "input_description": "Message sent to a distribution list of three addresses sharing a pricing sheet, explicitly says no action needed.",
+      "ground_truth": "warranted=false — broadcast to a distro list, explicit no-action-needed statement, not a single-recipient ask.",
+      "evals": {
+        "warranted_accuracy": "FAIL — marked warranted=true despite being a broadcast with an explicit no-action-needed line.",
+        "why_specificity": "FAIL — why is just the day count, ignores the message content entirely.",
+        "redundant_nudge_risk": "FAIL — the \"no action needed\" line is a clear resolved/non-actionable signal that was missed."
+      },
+      "candidate_input": {
+        "subject": "Updated pricing sheet attached",
+        "body": "Hi all, attaching the latest pricing sheet for reference. No action needed right now — just keeping everyone in the loop.",
+        "recipientRaw": "team-updates@steinweg.example, ops@steinweg.example, priya.nair@meridianhealth.example",
+        "businessDaysWaited": 6
+      },
+      "candidate_output": {
+        "warranted": true,
+        "why": "It's been 6 business days with no reply."
+      }
+    },
+    {
+      "label": "AVERAGE",
+      "score": 55,
+      "input_type": "Ask with an already-scheduled resolution",
+      "input_description": "Single recipient asked to review redlines, but the message itself already offers to cover it on Thursday's call.",
+      "ground_truth": "warranted=false — the message already states the topic will be resolved on Thursday's call; nudging again would be redundant.",
+      "evals": {
+        "warranted_accuracy": "PASS — correctly false, since a call is already scheduled to cover it.",
+        "why_specificity": "PARTIAL — why says \"this doesn't seem urgent,\" without naming the actual resolving line.",
+        "redundant_nudge_risk": "PARTIAL — right call, but doesn't clearly cite the Thursday-call detail as the reason."
+      },
+      "candidate_input": {
+        "subject": "Contract redlines — can you take a look",
+        "body": "Hi Marcus, sent over the redlined MSA — take a look when you get a chance. We can also just discuss it on our call Thursday if that's easier.",
+        "recipientRaw": "marcus.owusu@steinweglogistics.example",
+        "businessDaysWaited": 4
+      },
+      "candidate_output": {
+        "warranted": false,
+        "why": "This doesn't seem urgent."
+      }
+    },
+    {
+      "label": "GOOD",
+      "score": 82,
+      "input_type": "Genuine single-recipient ask, no resolution offered",
+      "input_description": "Single recipient asked to confirm a specific decision (term length), nothing in the thread suggests it's being resolved elsewhere.",
+      "ground_truth": "warranted=true — real ask, single recipient, no alternate resolution stated, no reply yet.",
+      "evals": {
+        "warranted_accuracy": "PASS — genuine single-recipient ask with nothing resolving it elsewhere.",
+        "why_specificity": "PASS — names the exact ask (24mo vs 36mo confirmation) driving the verdict.",
+        "redundant_nudge_risk": "PASS — correctly finds no already-scheduled touchpoint, so a nudge is legitimately warranted."
+      },
+      "candidate_input": {
+        "subject": "Confirming 24mo vs 36mo pricing",
+        "body": "Hi Priya, wanted to check in — were you able to confirm with your steering committee whether you're leaning toward the 24-month or 36-month term? Happy to send more detail on either.",
+        "recipientRaw": "priya.nair@meridianhealth.example",
+        "businessDaysWaited": 5
+      },
+      "candidate_output": {
+        "warranted": true,
+        "why": "Ellen asked Priya to confirm the 24- vs 36-month term for the steering committee, and nothing since has addressed that ask."
+      }
+    }
+  ]
+}

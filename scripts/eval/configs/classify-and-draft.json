@@ -1,0 +1,152 @@
+{
+  "product_name": "FollowUp OS — classifyAndDraft",
+  "product_description": "Triages inbound Gmail threads for a Strategic Partnership Manager: decides needs_reply vs low_confidence, assigns an urgency tier, and drafts two reply options. Runs once per new thread on gpt-4o-mini.",
+  "app_model": "openai/gpt-4o-mini",
+  "grader_model": "anthropic/claude-haiku-4-5",
+  "decision_point": "classify_and_draft",
+  "dimensions": [
+    {
+      "id": "classification_accuracy",
+      "name": "H1: Classification Accuracy",
+      "hhh": "Helpful",
+      "question": "Does needs_reply vs low_confidence match content specificity, not message count or politeness?",
+      "low": "Generic/templated cold outreach marked needs_reply, or a genuine specific ask dismissed as low_confidence. Follow-up volume used as evidence of a real relationship.",
+      "medium": "Correct call but the distinction was close and the reasoning doesn't show why content specificity (not volume) drove it.",
+      "high": "needs_reply reserved for genuine asks/questions/opportunities tied to real specifics; low_confidence correctly catches generic pitches even when personalized."
+    },
+    {
+      "id": "tier_sensibility",
+      "name": "H2: Tier Sensibility",
+      "hhh": "Helpful",
+      "question": "Is today/week/fyi assigned by actual urgency in the thread, not by classification alone?",
+      "low": "Tier is arbitrary or defaults to \"today\" regardless of whether anything time-sensitive is stated.",
+      "medium": "Tier is plausible but doesn't clearly track a real deadline or urgency signal in the body.",
+      "high": "\"today\" only when a real deadline/urgency is stated; \"week\"/\"fyi\" otherwise, matching the thread's actual stakes."
+    },
+    {
+      "id": "draft_actionability",
+      "name": "H3: Draft Actionability",
+      "hhh": "Helpful",
+      "question": "Do both drafts commit to one specific next step referencing a specific thread detail?",
+      "low": "Drafts are generic pleasantries (\"thanks, I'll get back to you\") with no reference to anything specific in the thread and no committed next step.",
+      "medium": "One draft is specific and actionable; the other lapses into generic filler.",
+      "high": "Both drafts reference a specific detail from the thread and each commits to one concrete next step, with distinct angles."
+    },
+    {
+      "id": "why_specificity",
+      "name": "Ho1: Why-Specificity",
+      "hhh": "Honest",
+      "question": "Does \"why\" cite an actual specific detail from the thread, not a vague label?",
+      "low": "\"why\" is a vacuous restatement (\"this seems important\") with nothing tied to the thread's actual content.",
+      "medium": "\"why\" mentions the general topic but not the specific detail that actually drove the classification/tier.",
+      "high": "\"why\" names the concrete detail (a deadline, a number, a named ask) that justifies both the classification and the tier."
+    },
+    {
+      "id": "draft_groundedness",
+      "name": "Ha1: Draft Groundedness",
+      "hhh": "Harmless",
+      "question": "Do drafts avoid inventing commitments, numbers, or dates not present in the thread?",
+      "low": "Drafts state specific numbers, dates, or commitments that aren't supported by anything in the thread.",
+      "medium": "Drafts stay mostly grounded but include one vague filler claim not tied to the thread.",
+      "high": "Every specific claim in both drafts traces back to something actually in the thread; nothing fabricated."
+    }
+  ],
+  "test_cases": [
+    {
+      "label": "BAD",
+      "score": 22,
+      "input_type": "Cold outreach, 3rd unanswered follow-up",
+      "input_description": "Vendor sends a 3rd follow-up (\"Quick call to discuss cutting costs?\") with no reply to the prior two, generic cost-savings pitch.",
+      "ground_truth": "Should be low_confidence/fyi — generic templated pitch, follow-up volume is a cold-outreach signal, not evidence of a relationship.",
+      "evals": {
+        "classification_accuracy": "FAIL — marked needs_reply despite a generic \"reduce costs\" pitch with 3 unanswered follow-ups.",
+        "tier_sensibility": "FAIL — marked \"today\" with nothing time-sensitive stated.",
+        "draft_actionability": "FAIL — both drafts are generic pleasantries, no next step, no thread detail referenced.",
+        "why_specificity": "FAIL — why is \"This seems like an important message that needs attention,\" no specific detail cited.",
+        "draft_groundedness": "PASS — doesn't fabricate anything, but only because it says nothing specific at all."
+      },
+      "candidate_input": {
+        "subject": "Quick call to discuss cutting costs?",
+        "body": "Hi Ellen, following up again — wanted to see if you had 15 minutes this week to explore how we've helped similar partnership teams reduce vendor costs by 20-30%. Let me know what works!",
+        "senderName": "Marcus Chen",
+        "senderEmail": "marcus.chen@salesoutreachco.com",
+        "mailboxAddress": "ellen@steinweg.example",
+        "messageCount": 3,
+        "waitedHours": 240
+      },
+      "candidate_output": {
+        "classification": "needs_reply",
+        "tier": "today",
+        "why": "This seems like an important message that needs attention.",
+        "drafts": [
+          { "label": "Friendly", "text": "Hi Marcus,\n\nThanks for reaching out! I'll get back to you soon.\n\nBest,\nEllen" },
+          { "label": "Polite", "text": "Hi Marcus,\n\nThanks for the note. Let me take a look and circle back.\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "AVERAGE",
+      "score": 55,
+      "input_type": "Real prospect, wrong tier + thin why",
+      "input_description": "Prospect asks a specific pricing question tied to a named deck and seat count, but nothing in the thread is actually urgent.",
+      "ground_truth": "needs_reply is correct; tier should be week (nothing time-sensitive stated); why should cite the 400-seat/deck detail directly.",
+      "evals": {
+        "classification_accuracy": "PASS — correctly needs_reply given the specific 400-seat pricing ask.",
+        "tier_sensibility": "FAIL — marked \"today\" though nothing in the thread states urgency.",
+        "draft_actionability": "PARTIAL — one draft proposes a number and next step; the other is generic filler.",
+        "why_specificity": "PARTIAL — mentions \"pricing\" but not the 400-seat/deck detail that actually matters.",
+        "draft_groundedness": "PASS — no fabricated specifics beyond the thread."
+      },
+      "candidate_input": {
+        "subject": "Following up on pricing tiers for 400 seats",
+        "body": "Hi Ellen, following up on the deck you sent last week — could you confirm per-seat pricing and contract term length for a 400-employee rollout? Want to bring a number to our internal review.",
+        "senderName": "Priya Nair",
+        "senderEmail": "priya.nair@meridianhealth.example",
+        "mailboxAddress": "ellen@steinweg.example",
+        "messageCount": 1,
+        "waitedHours": 20
+      },
+      "candidate_output": {
+        "classification": "needs_reply",
+        "tier": "today",
+        "why": "Priya is asking about pricing.",
+        "drafts": [
+          { "label": "Direct with numbers", "text": "Hi Priya,\n\nFor 400 seats we're looking at a tiered rate depending on term length — I'll pull together both scenarios and send a number today.\n\nBest,\nEllen" },
+          { "label": "Follow up", "text": "Hi Priya,\n\nThanks for reaching out, let me get back to you with details.\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "GOOD",
+      "score": 82,
+      "input_type": "Real renewal ask with a stated deadline",
+      "input_description": "Existing contact asks to confirm pricing at two term lengths ahead of a named internal meeting on a specific day.",
+      "ground_truth": "needs_reply/today (real deadline stated); why should name the steering-committee deadline; both drafts should commit to one next step grounded in the 24mo/36mo ask.",
+      "evals": {
+        "classification_accuracy": "PASS — genuine specific ask from an existing contact.",
+        "tier_sensibility": "PASS — \"today\" justified by the stated Thursday steering-committee deadline.",
+        "draft_actionability": "PASS — both drafts commit to a specific next step tied to the term-length ask.",
+        "why_specificity": "PASS — names the Thursday deadline and the 24mo/36mo decision driving it.",
+        "draft_groundedness": "PASS — no numbers or commitments invented beyond what's implied by the ask."
+      },
+      "candidate_input": {
+        "subject": "MSA renewal terms — 24mo vs 36mo",
+        "body": "Hi Ellen, ahead of our steering committee on Thursday, could you confirm per-seat pricing for both the 24-month and 36-month renewal terms? Want to bring a clear recommendation into the meeting.",
+        "senderName": "Marcus Owusu",
+        "senderEmail": "marcus.owusu@steinweglogistics.example",
+        "mailboxAddress": "ellen@steinweg.example",
+        "messageCount": 2,
+        "waitedHours": 30
+      },
+      "candidate_output": {
+        "classification": "needs_reply",
+        "tier": "today",
+        "why": "Marcus needs both term-length prices confirmed before Thursday's steering committee meeting.",
+        "drafts": [
+          { "label": "Direct with numbers", "text": "Hi Marcus,\n\nAhead of Thursday: I'll have both the 24-month and 36-month per-seat numbers over to you by end of day so you can walk in with a clear recommendation.\n\nBest,\nEllen" },
+          { "label": "Ask which term they're leaning toward", "text": "Hi Marcus,\n\nHappy to get both numbers over before Thursday — is the committee leaning toward one term already, or should I send both scenarios side by side?\n\nBest,\nEllen" }
+        ]
+      }
+    }
+  ]
+}

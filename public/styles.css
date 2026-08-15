@@ -64,6 +64,23 @@ nav[data-role="sidebar-nav"] { scrollbar-width: thin; }
 /* ===== Refresh icon spin transition ===== */
 .refresh-icon { transition: transform .6s; }
 
+/* ===== Scan-in-progress indicator (indeterminate — no real progress % is
+   available server-side, so this is an honest "something is happening"
+   signal, not a fake percentage) ===== */
+@keyframes scan-bar-sweep {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+.scan-bar-track { position: relative; overflow: hidden; background: #eef1f5; }
+.scan-bar-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 30%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0b8ee8, #7f9ec4);
+  animation: scan-bar-sweep 1.1s ease-in-out infinite;
+}
+
 /* ===== Placeholder screen (settings / thread stage-2 stub) ===== */
 .placeholder-card {
   display: flex;

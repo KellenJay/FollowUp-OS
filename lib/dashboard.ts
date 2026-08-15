@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { avatarFor, initialsFor } from "@/lib/avatar";
+import { getAccountSettings } from "@/lib/account";
 
 const PLACEHOLDER_DRAFT_TEXT =
   "AI-drafted replies aren't wired up yet — that lands in the next build step. Use the custom reply box below for now, or reply directly in Gmail.";
@@ -19,9 +20,18 @@ function formatWaited(hours: number): string {
 function formatTime(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
-  const day = d.toLocaleDateString("en-US", { weekday: "short" });
+  // Weekday-only ("Wed 23:27") made it impossible to tell which Wednesday a
+  // thread was from (2026-08-05 feedback) — now includes month/day, and year
+  // only when it isn't the current one, matching how Gmail itself elides it.
+  const isThisYear = d.getFullYear() === new Date().getFullYear();
+  const date = d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: isThisYear ? undefined : "numeric",
+  });
   const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${day} ${time}`;
+  return `${date} · ${time}`;
 }
 
 function formatSync(iso: string | null): string {
@@ -38,6 +48,31 @@ const DRAFT_TONES = [
   { tone: "#e8e2f8", toneText: "#54459b" },
 ];
 
+const DISMISSED_RETENTION_DAYS = 5;
+
+// No cron/scheduled-job infrastructure exists in this app (confirmed
+// 2026-08-14 — the `cron_runs` table is unused scaffolding) — scanning
+// itself only ever runs synchronously from a page load, so this follows the
+// same pattern: piggyback cleanup on a request that already happens instead
+// of standing up new background infrastructure. Runs on every dashboard
+// load, scoped to this owner's mailboxes only.
+async function sweepExpiredDismissed(mailboxIds: string[]) {
+  if (mailboxIds.length === 0) return;
+  const supabase = supabaseServer();
+  const cutoff = new Date(Date.now() - DISMISSED_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  await supabase.from("threads").delete().in("mailbox_id", mailboxIds).eq("status", "dismissed").lt("dismissed_at", cutoff);
+  await supabase.from("meetings").delete().in("mailbox_id", mailboxIds).eq("state", "dismissed").lt("dismissed_at", cutoff);
+
+  // followups has no mailbox_id of its own — it's one hop out via sent_id —
+  // so the owner-scoping has to go through the sent table's ids first.
+  const { data: sentRowsForOwner } = await supabase.from("sent").select("id").in("mailbox_id", mailboxIds);
+  const sentIds = (sentRowsForOwner ?? []).map((s) => s.id);
+  if (sentIds.length > 0) {
+    await supabase.from("followups").delete().in("sent_id", sentIds).eq("status", "dismissed").lt("dismissed_at", cutoff);
+  }
+}
+
 export async function loadDashboard(ownerId: string) {
   const supabase = supabaseServer();
 
@@ -49,6 +84,8 @@ export async function loadDashboard(ownerId: string) {
 
   const mailboxIds = (mailboxRows ?? []).map((m) => m.id);
   const mailboxAddressById = new Map((mailboxRows ?? []).map((m) => [m.id, m.address]));
+  await sweepExpiredDismissed(mailboxIds);
+  const accountSettings = await getAccountSettings(ownerId);
 
   const [{ data: threadRows = [] }, { data: sentRows = [] }, { data: meetingRows = [] }, { data: followupRows = [] }] =
     mailboxIds.length === 0
@@ -141,7 +178,10 @@ export async function loadDashboard(ownerId: string) {
 
   function sentFollowUpVals(f: NonNullable<typeof followupRows>[number]) {
     const sent = (f as unknown as { sent: { id: string; mailbox_id: string; subject: string; body: string; sent_at: string } }).sent;
-    drafts[f.id] = placeholderDrafts();
+    const fDrafts = (f as unknown as { drafts?: { label: string; text: string }[] }).drafts;
+    drafts[f.id] = fDrafts && fDrafts.length > 0
+      ? fDrafts.slice(0, 2).map((d, i) => ({ label: d.label, ...DRAFT_TONES[i], text: d.text }))
+      : placeholderDrafts();
     return {
       id: f.id,
       origin: "sent" as const,
@@ -329,6 +369,7 @@ export async function loadDashboard(ownerId: string) {
   const dismissed = [...dismissedThreads, ...dismissedFollowUps, ...dismissedMeetings];
 
   const mailboxes = (mailboxRows ?? []).map((m, i) => ({
+    id: m.id,
     address: m.address,
     // threadRows now includes dismissed rows too (fetched above for the
     // Dismissed tab) — exclude them here so a dismissed thread doesn't
@@ -340,5 +381,17 @@ export async function loadDashboard(ownerId: string) {
     sync: formatSync(m.last_scanned_at),
   }));
 
-  return { mailboxes, threads: needsReply, lowConf, followUps, sent, meetings, dismissed, drafts };
+  return {
+    mailboxes,
+    threads: needsReply,
+    lowConf,
+    followUps,
+    sent,
+    meetings,
+    dismissed,
+    drafts,
+    ownerName: accountSettings.ownerName,
+    replyPromiseHours: accountSettings.replyPromiseHours,
+    draftVoice: accountSettings.draftVoice,
+  };
 }

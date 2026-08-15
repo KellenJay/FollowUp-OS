@@ -1,24 +1,11 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { supabaseServer } from "@/lib/supabase/server";
-import { encryptToken } from "@/lib/crypto";
 import { findUserByEmail, resolveOrCreateUserByEmail } from "@/lib/users";
 import { verifyPassword } from "@/lib/password";
-
-// Sensitive (not restricted) scopes only — see PRD.md open-questions note on
-// why "dismiss" is modeled as our own app state instead of a real Gmail
-// archive: that would require gmail.modify, which Google classifies as
-// "restricted" and requires a costly third-party security assessment to
-// verify for production use.
-const GOOGLE_SCOPES = [
-  "openid",
-  "email",
-  "profile",
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/calendar.readonly",
-].join(" ");
+import { upsertMailbox } from "@/lib/mailboxes";
+import { upsertOwnerName } from "@/lib/account";
+import { GOOGLE_SCOPES } from "@/lib/google/scopes";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -93,25 +80,3 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
-
-async function upsertMailbox(ownerId: string, address: string, refreshToken: string, expiresAt?: number) {
-  const supabase = supabaseServer();
-  const { error } = await supabase.from("mailboxes").upsert(
-    {
-      owner_id: ownerId,
-      address,
-      state: "ok",
-      refresh_token_encrypted: encryptToken(refreshToken),
-      token_expires_at: expiresAt ? new Date(expiresAt * 1000).toISOString() : null,
-    },
-    { onConflict: "owner_id,address" }
-  );
-  if (error) {
-    throw new Error(`Failed to persist mailbox tokens for ${address}: ${error.message}`);
-  }
-}
-
-async function upsertOwnerName(ownerId: string, name: string) {
-  const supabase = supabaseServer();
-  await supabase.from("app_settings").upsert({ owner_id: ownerId, owner_name: name }, { onConflict: "owner_id" });
-}

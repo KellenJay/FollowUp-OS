@@ -19,9 +19,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}` }, { status: 400 });
   }
 
-  const update: { status: ValidStatus; updated_at: string; low_confidence?: boolean } = {
+  const update: { status: ValidStatus; updated_at: string; low_confidence?: boolean; dismissed_at: string | null } = {
     status,
     updated_at: new Date().toISOString(),
+    // Set only on the transition into dismissed, cleared on restore — the
+    // source of truth for auto-expiry (see lib/dashboard.ts's sweep), never
+    // touched by anything else.
+    dismissed_at: status === "dismissed" ? new Date().toISOString() : null,
   };
   // Only touch low_confidence when landing directly in one of these two
   // buckets. Leaving it untouched on a move to dismissed/manual_followup

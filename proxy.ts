@@ -13,7 +13,12 @@ import { auth } from "@/auth";
 const PUBLIC_PATHS = ["/connect", "/signup", "/api/auth", "/api/signup", "/privacy", "/terms"];
 
 export const proxy = auth((req) => {
-  const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
+  // "/" itself is public (renders the marketing landing page for signed-out
+  // visitors; app/page.tsx redirects signed-in users onward) — exact match
+  // only, since PUBLIC_PATHS uses startsWith and "/" would otherwise prefix-
+  // match every path and disable the gate entirely.
+  const isRoot = req.nextUrl.pathname === "/";
+  const isPublic = isRoot || PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
   if (!req.auth?.user && !isPublic) {
     if (req.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -23,5 +28,9 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Excludes any path containing a dot (static assets under public/ — app.js,
+  // styles.css, landing-logo.png, etc.) in addition to _next internals, since
+  // the landing page at "/" needs its own asset requests to reach public/
+  // unauthenticated too. No real page route in this app has a dot in it.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

@@ -1,0 +1,129 @@
+{
+  "product_name": "FollowUp OS — draftFallbackFollowup",
+  "product_description": "When a meeting's 30-minute transcript-wait window expires with no transcript found, drafts a generic-but-informed follow-up grounded in the contact's recent email history. Runs once per expired meeting, on gpt-4o-mini.",
+  "app_model": "openai/gpt-4o-mini",
+  "grader_model": "anthropic/claude-haiku-4-5",
+  "decision_point": "draft_fallback_followup",
+  "dimensions": [
+    {
+      "id": "history_groundedness",
+      "name": "H1: History Groundedness",
+      "hhh": "Helpful",
+      "question": "When recent email history exists, is it actually used to ground the summary/drafts?",
+      "low": "Rich, relevant email history is available but ignored entirely — output is generic regardless of content.",
+      "medium": "History is referenced but only in vague terms, not the specific topic it actually contains.",
+      "high": "Summary and drafts clearly draw on the specific topic/detail found in the recent history."
+    },
+    {
+      "id": "appropriate_hedging",
+      "name": "H2: Appropriate Hedging",
+      "hhh": "Helpful",
+      "question": "When history gives little or no context, does it say so honestly instead of inventing specifics?",
+      "low": "History is empty or thin, but the output invents specific topics/details anyway.",
+      "medium": "Correctly avoids inventing specifics but doesn't clearly state that the history gave little to go on.",
+      "high": "Explicitly and accurately states when the history gave little or no usable context, with no invented specifics."
+    },
+    {
+      "id": "no_transcript_disclosure",
+      "name": "Ho1: No-Transcript Disclosure",
+      "hhh": "Honest",
+      "question": "Does the summary explicitly state that no transcript was found for this call?",
+      "low": "Summary reads as if a normal transcript-based summary happened; never mentions that no transcript arrived.",
+      "medium": "Implies something was missing but doesn't clearly state that no transcript was found.",
+      "high": "Summary explicitly and plainly states that no transcript was found for the call."
+    },
+    {
+      "id": "no_fabricated_specifics",
+      "name": "Ha1: No Fabricated Specifics",
+      "hhh": "Harmless",
+      "question": "Do the drafts avoid inventing details/numbers not present in the shown email history?",
+      "low": "Drafts state specific numbers, dates, or topics that aren't supported by the shown history.",
+      "medium": "Drafts stay mostly grounded but include one vague claim not clearly tied to the history.",
+      "high": "Every specific claim in the drafts traces back to something actually in the shown history, or the drafts stay appropriately generic when there's nothing to draw on."
+    }
+  ],
+  "test_cases": [
+    {
+      "label": "BAD",
+      "score": 24,
+      "input_type": "Rich history ignored, no transcript-missing disclosure",
+      "input_description": "Three real emails discussing the MSA renewal and 24-month term are available, but the output ignores them entirely and never mentions the missing transcript.",
+      "ground_truth": "Should state no transcript was found and ground the follow-up in the 24-month renewal discussion from the email history.",
+      "evals": {
+        "history_groundedness": "FAIL — rich, directly relevant history available but completely ignored.",
+        "appropriate_hedging": "FAIL — not applicable as hedging, since real context existed and wasn't used.",
+        "no_transcript_disclosure": "FAIL — never mentions that no transcript was found.",
+        "no_fabricated_specifics": "PASS — doesn't invent anything, but only because it says nothing specific at all."
+      },
+      "candidate_input": {
+        "title": "Steinweg Logistics — Check-in",
+        "attendeeName": "Marcus Owusu",
+        "recentHistory": [
+          { "subject": "MSA renewal terms — 24mo vs 36mo", "snippet": "Confirming per-seat pricing for both terms ahead of Thursday's steering committee...", "date": "2026-07-28" },
+          { "subject": "Re: MSA renewal terms — 24mo vs 36mo", "snippet": "Great, locking in the 24-month term. Sending redlines by Friday.", "date": "2026-07-30" },
+          { "subject": "Redlined MSA attached", "snippet": "Here's the redlined MSA for legal review ahead of our call.", "date": "2026-07-31" }
+        ]
+      },
+      "candidate_output": {
+        "summary": "Great to catch up with Marcus today!",
+        "drafts": [
+          { "label": "Friendly", "text": "Hi Marcus,\n\nGreat catching up today!\n\nBest,\nEllen" },
+          { "label": "Brief", "text": "Hi Marcus,\n\nThanks for the time, talk soon!\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "AVERAGE",
+      "score": 55,
+      "input_type": "Thin history, generic grounding",
+      "input_description": "Only two vague emails exist (\"nice to connect\" style), correctly discloses no transcript but references the history only in generic terms.",
+      "ground_truth": "Should disclose no transcript found, and honestly note the history gives little to go on rather than treating it as substantive.",
+      "evals": {
+        "history_groundedness": "PARTIAL — references \"our intro call\" but not anything specific from the two emails.",
+        "appropriate_hedging": "PARTIAL — doesn't clearly say the history gave little context, treats it as more substantive than it is.",
+        "no_transcript_disclosure": "PASS — clearly states no transcript was found.",
+        "no_fabricated_specifics": "PASS — doesn't invent anything not present in the thin history."
+      },
+      "candidate_input": {
+        "title": "Meridian Health — Intro Call",
+        "attendeeName": "Priya Nair",
+        "recentHistory": [
+          { "subject": "Nice to connect", "snippet": "Great meeting you at the conference, let's find time to chat.", "date": "2026-07-15" },
+          { "subject": "Re: Nice to connect", "snippet": "Looking forward to it!", "date": "2026-07-16" }
+        ]
+      },
+      "candidate_output": {
+        "summary": "No transcript was found for this call. Based on recent emails, it looks like this followed up on an earlier intro conversation.",
+        "drafts": [
+          { "label": "Warm follow-up", "text": "Hi Priya,\n\nGreat to catch up again today — let me know if there's anything useful I can send over.\n\nBest,\nEllen" },
+          { "label": "Open-ended", "text": "Hi Priya,\n\nThanks for the time today, happy to keep the conversation going whenever's useful.\n\nBest,\nEllen" }
+        ]
+      }
+    },
+    {
+      "label": "GOOD",
+      "score": 82,
+      "input_type": "Zero email history, correctly hedged",
+      "input_description": "Brand-new contact with no email history at all; output correctly discloses both the missing transcript and the lack of history rather than inventing context.",
+      "ground_truth": "Should disclose no transcript found AND honestly state there's no email history to draw on, with appropriately generic (not fabricated) drafts.",
+      "evals": {
+        "history_groundedness": "PASS — correctly reflects that there's nothing to ground in, rather than pretending otherwise.",
+        "appropriate_hedging": "PASS — explicitly states the history gave no usable context.",
+        "no_transcript_disclosure": "PASS — clearly states no transcript was found.",
+        "no_fabricated_specifics": "PASS — drafts stay appropriately generic, invent no specifics."
+      },
+      "candidate_input": {
+        "title": "New Contact — Discovery Call",
+        "attendeeName": "Jordan Ellis",
+        "recentHistory": []
+      },
+      "candidate_output": {
+        "summary": "No transcript was found for this call, and there's no prior email history with Jordan to draw on.",
+        "drafts": [
+          { "label": "Open follow-up", "text": "Hi Jordan,\n\nGreat connecting today — wanted to follow up and see if there's anything useful I can send over on our end.\n\nBest,\nEllen" },
+          { "label": "Ask for next step", "text": "Hi Jordan,\n\nThanks for the time today — let me know what a good next step looks like from your side and I'll follow up accordingly.\n\nBest,\nEllen" }
+        ]
+      }
+    }
+  ]
+}

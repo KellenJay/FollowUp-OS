@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import { avatarFor, initialsFor } from "@/lib/avatar";
 import type { SenderCandidate } from "@/lib/google/candidates";
 
-export default function OnboardingForm({ candidates }: { candidates: SenderCandidate[] }) {
+export default function OnboardingForm({
+  candidates,
+  onComplete,
+}: {
+  candidates: SenderCandidate[];
+  // When embedded as AppShell's modal, closes the modal in place instead of
+  // navigating — the dashboard underneath is already live. Standalone usage
+  // (direct /onboarding visit) falls back to the old navigate-to-"/" behavior.
+  onComplete?: () => void;
+}) {
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +35,10 @@ export default function OnboardingForm({ candidates }: { candidates: SenderCandi
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vipAddresses: Array.from(checked), excludedAddresses: [] }),
     });
+    if (onComplete) {
+      onComplete();
+      return;
+    }
     router.push("/");
     router.refresh();
   }
