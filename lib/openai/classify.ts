@@ -49,7 +49,7 @@ const SYSTEM_PROMPT = `You triage business email for a Strategic Partnership Man
 
 3. WHY — one short sentence explaining the classification, referencing something specific from the thread.
 
-4. DRAFTS — exactly two distinct reply options, only useful if classification is "needs_reply" (for "low_confidence" still provide two reasonable draft attempts, since the user may open it anyway). Tone: warm-but-concrete — acknowledge context, commit to ONE specific next step, reference a specific detail from the thread. Never generic pleasantries. Each draft needs a short label describing its angle (e.g. "Direct with numbers", "Cautious, asks first").
+4. DRAFTS — exactly two distinct reply options, only useful if classification is "needs_reply" (for "low_confidence" still provide two reasonable draft attempts, since the user may open it anyway). Tone: warm-but-concrete — acknowledge context, commit to ONE specific next step, reference a specific detail from the thread. Never generic pleasantries. Each draft needs a short label describing its angle (e.g. "Direct with numbers", "Cautious, asks first"). Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.
 
 Example of the target tone (from a validated real draft, for calibration only — do not reuse this content):
 Label: "Direct with numbers"
@@ -129,7 +129,7 @@ WARRANTED = false when any of these apply:
 
 WHY — one short, specific sentence referencing actual content from the message, explaining the verdict either way.
 
-DRAFTS — exactly two distinct follow-up nudge options, only meaningful when WARRANTED is true (still provide two reasonable attempts if false, since the schema requires it, but they'll be discarded). Tone: warm-but-concrete — reference the original ask specifically, don't just say "following up." Each draft needs a short label describing its angle (e.g. "Brief nudge", "Offers to hop on a call").`;
+DRAFTS — exactly two distinct follow-up nudge options, only meaningful when WARRANTED is true (still provide two reasonable attempts if false, since the schema requires it, but they'll be discarded). Tone: warm-but-concrete — reference the original ask specifically, don't just say "following up." Each draft needs a short label describing its angle (e.g. "Brief nudge", "Offers to hop on a call"). Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
 export async function classifyFollowupRelevance(
   message: SentMessageForClassification
@@ -192,7 +192,7 @@ const TRANSCRIPT_SYSTEM_PROMPT = `You summarize a call transcript (from a meetin
 
 2. ACTION ITEMS — a short list of concrete next steps mentioned in the call, phrased as "Person: does what" (e.g. "You: send the security questionnaire", "Priya: confirm the pilot sites by Friday"). Omit if the call genuinely had none — return an empty list rather than inventing one.
 
-3. DRAFTS — exactly two distinct follow-up note options referencing specific details/action items from the call. Tone: warm-but-concrete, one specific next step per draft, never generic pleasantries. Each needs a short label describing its angle.`;
+3. DRAFTS — exactly two distinct follow-up note options referencing specific details/action items from the call. Tone: warm-but-concrete, one specific next step per draft, never generic pleasantries. Each needs a short label describing its angle. Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
 export async function summarizeTranscript(input: TranscriptForSummary): Promise<TranscriptSummaryResult> {
   const client = openaiClient();
@@ -246,7 +246,7 @@ const FALLBACK_SYSTEM_PROMPT = `A call ended and no meeting-recorder transcript 
 
 1. SUMMARY — 1-2 short sentences. Explicitly note that no transcript was found, then give whatever context the recent email history suggests about the relationship/topic (or say the history gave little context, if that's true — don't invent specifics that aren't supported by the messages shown).
 
-2. DRAFTS — exactly two distinct generic-but-informed follow-up note options ("great to catch up — following up on X" style, where X is grounded in the email history if possible). Tone: warm-but-concrete, never generic pleasantries. Each needs a short label describing its angle.`;
+2. DRAFTS — exactly two distinct generic-but-informed follow-up note options ("great to catch up — following up on X" style, where X is grounded in the email history if possible). Tone: warm-but-concrete, never generic pleasantries. Each needs a short label describing its angle. Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
 export async function draftFallbackFollowup(input: MeetingForFallback): Promise<FallbackFollowupResult> {
   const client = openaiClient();

@@ -106,7 +106,15 @@ export async function loadDashboard(ownerId: string) {
 
   const drafts: Record<string, ReturnType<typeof placeholderDrafts>> = {};
 
-  const threadIds = (threadRows ?? []).map((t) => t.id);
+  // No one sends a real email with a blank subject line — matches the
+  // scan-time filter in lib/scan.ts (which also treats the ingestion
+  // fallback string "(no subject)" as blank), and also covers any rows
+  // captured before that filter existed, so they simply stop appearing.
+  const filteredThreadRows = (threadRows ?? []).filter(
+    (t) => t.subject && t.subject.trim().length > 0 && t.subject.trim().toLowerCase() !== "(no subject)"
+  );
+
+  const threadIds = filteredThreadRows.map((t) => t.id);
   const { data: aiDraftRows = [] } =
     threadIds.length === 0
       ? { data: [] }
@@ -126,7 +134,7 @@ export async function loadDashboard(ownerId: string) {
     }
   }
 
-  const needsReply = (threadRows ?? [])
+  const needsReply = filteredThreadRows
     .filter((t) => t.status === "needs_reply")
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
@@ -152,7 +160,7 @@ export async function loadDashboard(ownerId: string) {
       };
     });
 
-  const lowConf = (threadRows ?? [])
+  const lowConf = filteredThreadRows
     .filter((t) => t.status === "low_confidence")
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
@@ -200,6 +208,9 @@ export async function loadDashboard(ownerId: string) {
       snippet: f.nudge_reasoning,
       body: sent.body,
       nudge: f.nudge_reasoning,
+      feedback: f.feedback,
+      feedbackNote: f.feedback_note,
+      feedbackTags: f.feedback_tags,
     };
   }
 
@@ -213,7 +224,7 @@ export async function loadDashboard(ownerId: string) {
   // decision. Carries the full needs-reply/low-confidence shape (tier,
   // waited, time, why, low) too, not just the follow-up shape, so the
   // client can move it back to Needs-reply/Low-confidence without a refetch.
-  const manualFollowUps = (threadRows ?? [])
+  const manualFollowUps = filteredThreadRows
     .filter((t) => t.status === "manual_followup")
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
@@ -249,7 +260,7 @@ export async function loadDashboard(ownerId: string) {
   // so this "true home" survives however many moves preceded the dismiss)
   // and dismissed sent-message follow-ups (a different table/restore path
   // entirely — see /api/followups/:id/status).
-  const dismissedThreads = (threadRows ?? [])
+  const dismissedThreads = filteredThreadRows
     .filter((t) => t.status === "dismissed")
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
@@ -272,6 +283,9 @@ export async function loadDashboard(ownerId: string) {
         body: t.body,
         why: t.why,
         meta: t.low_confidence ? "low confidence" : "needed reply",
+        feedback: t.feedback,
+        feedbackNote: t.feedback_note,
+        feedbackTags: t.feedback_tags,
       };
     });
 
@@ -296,6 +310,7 @@ export async function loadDashboard(ownerId: string) {
       body: s.body,
       feedback: s.feedback,
       feedbackNote: s.feedback_note,
+      feedbackTags: s.feedback_tags,
     }));
 
   function meetingVals(m: NonNullable<typeof meetingRows>[number]) {
@@ -345,6 +360,9 @@ export async function loadDashboard(ownerId: string) {
       tool: m.transcript_source,
       mins,
       of,
+      feedback: m.feedback,
+      feedbackNote: m.feedback_note,
+      feedbackTags: m.feedback_tags,
     };
   }
 
@@ -374,7 +392,7 @@ export async function loadDashboard(ownerId: string) {
     // threadRows now includes dismissed rows too (fetched above for the
     // Dismissed tab) — exclude them here so a dismissed thread doesn't
     // inflate the sidebar's active-count badge.
-    count: (threadRows ?? []).filter((t) => t.mailbox_id === m.id && t.status !== "sent" && t.status !== "dismissed").length,
+    count: filteredThreadRows.filter((t) => t.mailbox_id === m.id && t.status !== "sent" && t.status !== "dismissed").length,
     dot: DOT_COLORS[i % DOT_COLORS.length],
     role: `Connected · ${m.address.split("@")[1] ?? ""}`,
     state: m.state,

@@ -18,7 +18,14 @@ export const proxy = auth((req) => {
   // only, since PUBLIC_PATHS uses startsWith and "/" would otherwise prefix-
   // match every path and disable the gate entirely.
   const isRoot = req.nextUrl.pathname === "/";
-  const isPublic = isRoot || PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
+  // /api/mcp is the ONLY route an external AI assistant calls directly — it
+  // has no NextAuth session cookie to send, and authenticates itself via its
+  // own bearer token instead (see lib/mcp-auth.ts, enforced inside the route
+  // by withMcpAuth). Exact match, not startsWith via PUBLIC_PATHS: a prefix
+  // match here would also expose /api/mcp-token, which is session-gated on
+  // purpose (it's called from the logged-in web UI, not by the assistant).
+  const isMcpRoute = req.nextUrl.pathname === "/api/mcp";
+  const isPublic = isRoot || isMcpRoute || PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
   if (!req.auth?.user && !isPublic) {
     if (req.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });

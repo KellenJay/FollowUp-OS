@@ -299,6 +299,8 @@ const state = {
   expanded: {},
   feedback: {},
   feedbackNotes: {},
+  feedbackTagsMap: {},
+  feedbackPopup: null,
   sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true, mcp: false },
   dismissedIds: ["x1", "x2"],
   inboxOpen: true,
@@ -317,11 +319,17 @@ const state = {
   confirmSend: null,
   confirmRescan: false,
   scanning: false,
+  scanProgress: null,
+  searchOpen: false,
+  searchLoading: false,
+  searchQuery: "",
+  searchResults: [],
   defaultMailbox: DEFAULT_MAILBOX,
   filterVals: { priority: null, mailbox: DEFAULT_MAILBOX, date: null, sender: null },
   spin: 0,
   scanned: "2 min ago",
-  mcpTokenVisible: false
+  mcpTokenVisible: false,
+  mcpToken: null
 };
 
 let toastTimer = null;
@@ -333,6 +341,19 @@ let toastTimer = null;
 function setFilter(key, val) {
   state.filterVals = Object.assign({}, state.filterVals, { [key]: state.filterVals[key] === val ? null : val });
   state.openFilter = null;
+}
+
+// Shared thumb-button styling for both Sent cards and Dismissed cards —
+// same up/down highlight rule either way.
+function feedbackColors(fb) {
+  return {
+    upBg: fb === "up" ? "#dcf0e6" : "#fff",
+    upBorder: fb === "up" ? "#bde3ce" : "#eceef1",
+    upColor: fb === "up" ? "#2b7355" : "#9aa1ac",
+    downBg: fb === "down" ? "#fce6d8" : "#fff",
+    downBorder: fb === "down" ? "#f4d0ba" : "#eceef1",
+    downColor: fb === "down" ? "#a5561b" : "#9aa1ac"
+  };
 }
 
 function responsive() {
@@ -886,6 +907,11 @@ function renderVals() {
     totalUnread: MAILBOXES.reduce((a, m) => a + m.count, 0),
     lastScanned: s.scanned,
     scanning: s.scanning,
+    scanProgress: s.scanProgress,
+    searchOpen: s.searchOpen,
+    searchLoading: s.searchLoading,
+    searchQuery: s.searchQuery,
+    searchResults: s.searchResults,
     confirmRescan: s.confirmRescan,
     spin: s.spin,
 
@@ -1127,26 +1153,12 @@ function renderVals() {
       // Falls back to the server-persisted value so a rating survives a
       // reload instead of only reflecting clicks made this session.
       const fb = s.feedback[m.id] !== undefined ? s.feedback[m.id] : (m.feedback || null);
-      const noteValue = s.feedbackNotes[m.id] !== undefined ? s.feedbackNotes[m.id] : (m.feedbackNote || "");
-      // Placeholder "just sent this session" items (before real Gmail send
-      // exists) have no backing `sent` row yet — m.feedback is undefined for
-      // those specifically (real rows always get feedback: null, not
-      // undefined, from dashboard.ts), so skip persistence for them rather
-      // than PATCH a nonexistent id.
-      const canPersist = m.feedback !== undefined;
       return {
         id: m.id, name: m.name, org: m.org, initials: m.initials, av: m.av,
         subject: m.subject, time: m.time, origin: m.origin, body: m.body,
         open: open,
-        canPersist: canPersist,
         toggleIcon: open ? "ti-eye-off" : "ti-eye",
-        upBg: fb === "up" ? "#dcf0e6" : "#fff",
-        upBorder: fb === "up" ? "#bde3ce" : "#eceef1",
-        upColor: fb === "up" ? "#2b7355" : "#9aa1ac",
-        downBg: fb === "down" ? "#fce6d8" : "#fff",
-        downBorder: fb === "down" ? "#f4d0ba" : "#eceef1",
-        downColor: fb === "down" ? "#a5561b" : "#9aa1ac",
-        noteValue: noteValue
+        ...feedbackColors(fb)
       };
     }),
 
@@ -1155,9 +1167,18 @@ function renderVals() {
     dismissedCount: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length,
     hasDismissed: DISMISSED.length > 0,
     noDismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length === 0,
-    dismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).map(d => ({
-      id: d.id, name: d.name, subject: d.subject, meta: d.meta || "dismissed"
-    })),
+    dismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).map(d => {
+      // Dismissed items merge threads (origin needs_reply/low_confidence),
+      // sent-follow-ups (origin "sent"), and meetings (origin "meeting") —
+      // origin already discriminates which feedback route each one needs.
+      const kind = d.origin === "sent" ? "followup" : d.origin === "meeting" ? "meeting" : "thread";
+      const fb = s.feedback[d.id] !== undefined ? s.feedback[d.id] : (d.feedback || null);
+      return {
+        id: d.id, name: d.name, subject: d.subject, meta: d.meta || "dismissed",
+        kind: kind,
+        ...feedbackColors(fb)
+      };
+    }),
 
     bottomNav: [
       { key: "home", icon: "ti-layout-grid", label: "Inbox" },
@@ -1285,6 +1306,7 @@ root.innerHTML = `
         <i class="ti ti-search" style="font-size:16px;color:#9aa1ac;margin-right:9px"></i>
         <input id="searchInput" type="text" placeholder="Did I ever reply to Marcus about the Q3 pilot pricing?" style="flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:13px;font-weight:500;color:#13161c">
         <span style="font-size:10.5px;font-weight:700;color:#9aa1ac;background:#fff;border:1px solid #e7e9ed;border-radius:6px;padding:2px 6px">⌘K</span>
+        <div id="searchResultsPanel" class="hidden" style="position:absolute;top:48px;left:0;right:0;z-index:80;max-height:360px;overflow-y:auto;background:#fff;border:1px solid #eceef1;border-radius:16px;box-shadow:0 18px 40px -12px rgba(16,24,40,.18),0 2px 6px rgba(16,24,40,.05)"></div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex:none;padding:5px 11px 5px 8px;border:1px solid #eceef1;border-radius:999px;background:#fff">
         <span style="width:6px;height:6px;border-radius:999px;background:#3fb27f;box-shadow:0 0 0 3px rgba(63,178,127,.15)"></span>
@@ -1302,9 +1324,9 @@ root.innerHTML = `
   </header>
 
   <div id="scanBanner" class="hidden" style="display:flex;align-items:center;gap:10px;padding:9px 24px;background:#f1f7fd;border-bottom:1px solid #d9ebf9">
-    <span style="font-size:12px;font-weight:700;color:#0b6fb8">Scanning your inbox…</span>
+    <span id="scanBannerText" style="font-size:12px;font-weight:700;color:#0b6fb8">Scanning your inbox…</span>
     <div class="scan-bar-track" style="flex:1;max-width:220px;height:5px;border-radius:999px">
-      <div class="scan-bar-fill" style="height:5px;border-radius:999px"></div>
+      <div id="scanBarFill" class="scan-bar-fill" style="height:5px;border-radius:999px"></div>
     </div>
   </div>
 
@@ -1329,6 +1351,7 @@ root.innerHTML = `
 
 <div id="confirmSendRoot"></div>
 <div id="confirmRescanRoot"></div>
+<div id="feedbackPopupRoot"></div>
 `;
 
 // ---------------------------------------------------------------------------
@@ -1357,6 +1380,22 @@ function renderShell(v) {
   document.getElementById("mainArea").style.padding = v.mainPad;
   document.getElementById("bottomNav").classList.toggle("hidden", !v.isMobile);
   document.getElementById("scanBanner").classList.toggle("hidden", !v.scanning);
+  {
+    const fill = document.getElementById("scanBarFill");
+    const text = document.getElementById("scanBannerText");
+    if (v.scanProgress) {
+      const pct = v.scanProgress.total > 0 ? Math.round((v.scanProgress.done / v.scanProgress.total) * 100) : 0;
+      fill.style.animation = "none";
+      fill.style.width = pct + "%";
+      text.textContent = v.scanProgress.done >= v.scanProgress.total
+        ? "Finishing up…"
+        : `Scanning mailbox ${v.scanProgress.done + 1} of ${v.scanProgress.total}…`;
+    } else {
+      fill.style.animation = "";
+      fill.style.width = "";
+      text.textContent = "Scanning your inbox…";
+    }
+  }
 
   // ----- scope pill -----
   document.getElementById("scopeLabel").textContent = v.scopeLabel;
@@ -1973,10 +2012,10 @@ function sentRowHtml(m) {
         <button data-action="toggleSent" data-id="${m.id}" aria-label="Preview sent reply" class="hover-pill-btn" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer">
           <i class="ti ${m.toggleIcon}" style="font-size:14px;color:#9aa1ac"></i>
         </button>
-        <button data-action="rateSent" data-id="${m.id}" data-val="up" aria-label="Good draft" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid ${m.upBorder};border-radius:999px;background:${m.upBg};cursor:pointer">
+        <button data-action="openFeedback" data-id="${m.id}" data-kind="sent" data-val="up" aria-label="Good draft" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid ${m.upBorder};border-radius:999px;background:${m.upBg};cursor:pointer">
           <i class="ti ti-thumb-up" style="font-size:14px;color:${m.upColor}"></i>
         </button>
-        <button data-action="rateSent" data-id="${m.id}" data-val="down" aria-label="Bad draft" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid ${m.downBorder};border-radius:999px;background:${m.downBg};cursor:pointer">
+        <button data-action="openFeedback" data-id="${m.id}" data-kind="sent" data-val="down" aria-label="Bad draft" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid ${m.downBorder};border-radius:999px;background:${m.downBg};cursor:pointer">
           <i class="ti ti-thumb-down" style="font-size:14px;color:${m.downColor}"></i>
         </button>
       </div>
@@ -1987,11 +2026,6 @@ function sentRowHtml(m) {
           <p style="margin:0 0 9px;font-size:13px;line-height:1.65;color:#3a404a">${esc(m.body)}</p>
           <a href="https://mail.google.com/mail/u/0/#all/${m.id}" target="_blank" style="font-size:11.5px;font-weight:700">Open in Gmail <i class="ti ti-external-link" style="font-size:12px"></i></a>
         </div>
-        ${m.canPersist ? `
-        <div style="margin-top:9px;display:flex;gap:8px;align-items:center">
-          <input type="text" id="feedbackNote-${m.id}" data-action="feedbackNote" data-id="${m.id}" value="${esc(m.noteValue)}" placeholder="Add a note on this draft (optional)" style="flex:1;height:34px;border:1px solid #eceef1;border-radius:10px;padding:0 11px;font-size:12px;font-weight:500;outline:none">
-          <button data-action="saveFeedbackNote" data-id="${m.id}" class="hover-pill-btn" style="flex:none;height:34px;padding:0 13px;border:1px solid #eceef1;border-radius:10px;background:#fff;font-size:11.5px;font-weight:700;color:#40464f;cursor:pointer">Save</button>
-        </div>` : ""}
       </div>
     </div>
   </div>
@@ -2055,6 +2089,12 @@ function renderDismissed(v) {
               <p style="margin:0;font-size:13px;font-weight:600;color:#5d6470;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name)} · ${esc(d.subject)}</p>
             </div>
             <span style="flex:none;font-size:11px;font-weight:600;color:#a7adb8;background:#f1f2f5;border-radius:999px;padding:3px 9px">${esc(d.meta)}</span>
+            <button data-action="openFeedback" data-id="${d.id}" data-kind="${d.kind}" data-val="up" aria-label="Good call" style="flex:none;width:29px;height:29px;display:flex;align-items:center;justify-content:center;border:1px solid ${d.upBorder};border-radius:999px;background:${d.upBg};cursor:pointer">
+              <i class="ti ti-thumb-up" style="font-size:13px;color:${d.upColor}"></i>
+            </button>
+            <button data-action="openFeedback" data-id="${d.id}" data-kind="${d.kind}" data-val="down" aria-label="Bad call" style="flex:none;width:29px;height:29px;display:flex;align-items:center;justify-content:center;border:1px solid ${d.downBorder};border-radius:999px;background:${d.downBg};cursor:pointer">
+              <i class="ti ti-thumb-down" style="font-size:13px;color:${d.downColor}"></i>
+            </button>
             <button data-action="restoreDismissed" data-id="${d.id}" data-name="${esc(d.name)}" class="hover-restore" style="flex:none;display:flex;align-items:center;gap:5px;height:29px;padding:0 12px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:11.5px;font-weight:700;color:#40464f;cursor:pointer">
               <i class="ti ti-rotate-2" style="font-size:13px;color:#9aa1ac"></i>Restore
             </button>
@@ -2343,8 +2383,8 @@ function renderSettings(v) {
     <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid #f2f3f6">
       <div style="width:36px;height:36px;flex:none;border-radius:11px;background:linear-gradient(135deg,#0b8ee8,#f08a20);display:flex;align-items:center;justify-content:center"><i class="ti ti-sparkles" style="font-size:16px;color:#fff"></i></div>
       <div style="flex:1;min-width:190px">
-        <p style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.1px">Claude (Anthropic)</p>
-        <p style="margin:2px 0 0;font-size:11.5px;font-weight:500;color:#9aa1ac">MCP server · read-only access to this dashboard</p>
+        <p style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.1px">AI assistant (MCP)</p>
+        <p style="margin:2px 0 0;font-size:11.5px;font-weight:500;color:#9aa1ac">Works with Claude and other MCP-compatible assistants · read-only access to this dashboard</p>
       </div>
       <span style="display:inline-flex;align-items:center;gap:6px;flex:none;font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 11px;background:#f1f2f5;color:#5d6470">
         <i class="ti ti-plug-off" style="font-size:13px"></i>Not connected</span>
@@ -2354,22 +2394,23 @@ function renderSettings(v) {
       <div>
         <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Server URL</p>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input id="mcpServerUrl" type="text" readonly value="https://heartcount-relationship-app.vercel.app/api/mcp" style="flex:1;min-width:160px;height:38px;border:1px solid #eceef1;border-radius:11px;background:#f7f8fa;padding:0 13px;font-size:12.5px;font-weight:600;color:#40464f;outline:none">
+          <input id="mcpServerUrl" type="text" readonly value="${esc(window.location.origin)}/api/mcp" style="flex:1;min-width:160px;height:38px;border:1px solid #eceef1;border-radius:11px;background:#f7f8fa;padding:0 13px;font-size:12.5px;font-weight:600;color:#40464f;outline:none">
           <button data-action="copyMcpUrl" aria-label="Copy server URL" class="hover-pill-btn" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:11px;background:#fff;cursor:pointer">
             <i class="ti ti-copy" style="font-size:15px;color:#9aa1ac"></i>
           </button>
         </div>
-        <p style="margin:6px 0 0;font-size:11px;font-weight:500;color:#9aa1ac">This endpoint goes live once the app is deployed — not active yet.</p>
+        <p style="margin:6px 0 0;font-size:11px;font-weight:500;color:#9aa1ac">Add this as a custom connector in Claude (or another MCP client). A local URL only works for tools running on this same machine — deploy the app for Claude itself to reach it.</p>
       </div>
       <div>
         <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Auth token</p>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input id="mcpAuthToken" type="${tokenType}" readonly placeholder="Not yet generated" style="flex:1;min-width:160px;height:38px;border:1px solid #eceef1;border-radius:11px;background:#f7f8fa;padding:0 13px;font-size:12.5px;font-weight:600;color:#40464f;outline:none">
+          <input id="mcpAuthToken" type="${tokenType}" readonly value="${esc(state.mcpToken || "")}" placeholder="Not yet generated" style="flex:1;min-width:160px;height:38px;border:1px solid #eceef1;border-radius:11px;background:#f7f8fa;padding:0 13px;font-size:12.5px;font-weight:600;color:#40464f;outline:none">
           <button data-action="toggleMcpTokenVisible" aria-label="Toggle token visibility" class="hover-pill-btn" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:11px;background:#fff;cursor:pointer">
             <i class="ti ${tokenEyeIcon}" style="font-size:15px;color:#9aa1ac"></i>
           </button>
           <button data-action="generateMcpToken" class="hover-restore" style="flex:none;height:38px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#13161c;cursor:pointer;white-space:nowrap">Generate token</button>
         </div>
+        ${state.mcpToken ? `<p style="margin:6px 0 0;font-size:11px;font-weight:600;color:#a5561b">Copy this now — it won't be shown again. Regenerating replaces it.</p>` : ""}
       </div>
     </div>
 
@@ -2432,6 +2473,107 @@ function renderConfirmRescanModal(v) {
   `;
 }
 
+// Claude-style feedback pattern: thumb up/down -> a matching set of 5
+// toggleable reason tags -> optional comment -> Save. Every step after the
+// thumb is skippable — a bare thumb + Save is a fully valid submission.
+// Shared by Dismissed cards (threads/followups/meetings) and Sent cards.
+const FEEDBACK_TAGS = {
+  up: ["Accurate", "Good tone", "Right call", "Relevant", "Saved time"],
+  down: ["Inaccurate", "Wrong tone", "Wrong call", "Not relevant", "Missed context"]
+};
+
+const FEEDBACK_ROUTE_BY_KIND = {
+  thread: "/api/threads/",
+  followup: "/api/followups/",
+  meeting: "/api/meetings/",
+  sent: "/api/sent/"
+};
+
+function renderFeedbackPopupModal() {
+  const el = document.getElementById("feedbackPopupRoot");
+  const p = state.feedbackPopup;
+  if (!p) {
+    el.innerHTML = "";
+    return;
+  }
+  const tags = p.val ? FEEDBACK_TAGS[p.val] : [];
+  el.innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.45);padding:20px">
+    <div style="background:#fff;border-radius:20px;padding:22px;max-width:400px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35)">
+      <h3 style="margin:0 0 14px;font-size:16px;font-weight:800;letter-spacing:-.2px">How was this?</h3>
+      <div style="display:flex;gap:8px">
+        <button data-action="pickFeedbackValue" data-val="up" aria-label="Good" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid ${p.val === "up" ? "#bde3ce" : "#eceef1"};border-radius:999px;background:${p.val === "up" ? "#dcf0e6" : "#fff"};cursor:pointer">
+          <i class="ti ti-thumb-up" style="font-size:17px;color:${p.val === "up" ? "#2b7355" : "#9aa1ac"}"></i>
+        </button>
+        <button data-action="pickFeedbackValue" data-val="down" aria-label="Bad" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid ${p.val === "down" ? "#f4d0ba" : "#eceef1"};border-radius:999px;background:${p.val === "down" ? "#fce6d8" : "#fff"};cursor:pointer">
+          <i class="ti ti-thumb-down" style="font-size:17px;color:${p.val === "down" ? "#a5561b" : "#9aa1ac"}"></i>
+        </button>
+      </div>
+      <div class="expand-wrap${p.val ? " expand-wrap--open" : ""}">
+        <div class="expand-inner">
+          <div style="display:flex;flex-wrap:wrap;gap:7px;padding-top:14px">
+            ${tags.map(tag => {
+              const on = p.tags.indexOf(tag) >= 0;
+              return `<button data-action="toggleFeedbackTag" data-tag="${esc(tag)}" style="height:30px;padding:0 12px;border:1px solid ${on ? "#c7d8ee" : "#eceef1"};border-radius:999px;background:${on ? "#eaf3fd" : "#fff"};font-size:12px;font-weight:700;color:${on ? "#0b6fb8" : "#5d6470"};cursor:pointer">${esc(tag)}</button>`;
+            }).join("")}
+          </div>
+          <textarea id="feedbackPopupNoteInput" data-action="feedbackPopupNote" placeholder="Add a comment (optional)" style="margin-top:11px;width:100%;min-height:64px;resize:vertical;border:1px solid #eceef1;border-radius:12px;background:#fcfcfd;padding:10px 12px;font-size:12.5px;line-height:1.6;color:#22272f;outline:none">${esc(p.note)}</textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button data-action="closeFeedbackPopup" class="hover-pill-btn-color" style="height:38px;padding:0 16px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:#40464f;cursor:pointer">Cancel</button>
+        <button data-action="saveFeedbackPopup" ${p.val ? "" : "disabled"} class="hover-dark-btn" style="height:38px;padding:0 18px;border:0;border-radius:999px;background:${p.val ? "#13161c" : "#c3c8d1"};color:#fff;font-size:12.5px;font-weight:700;cursor:${p.val ? "pointer" : "default"}">Save</button>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+const SEARCH_SOURCE_LABELS = {
+  needs_reply: "Needs reply",
+  low_confidence: "Low confidence",
+  follow_up: "Follow-up",
+  sent: "Sent",
+  dismissed: "Dismissed",
+};
+
+// openThread's shared detail view only covers threads/lowConf/followUps/
+// meetings (see the `ALL` array built elsewhere in this file) — sent and
+// dismissed items aren't in it, so a result from either of those jumps to
+// its tab instead of the (unsupported) detail view.
+const SEARCH_JUMPABLE_SOURCES = { needs_reply: true, low_confidence: true, follow_up: true };
+const SEARCH_TAB_BY_SOURCE = { sent: "sent", dismissed: "dismissed" };
+
+function renderSearchResults(v) {
+  const el = document.getElementById("searchResultsPanel");
+  if (!v.searchOpen) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  el.classList.remove("hidden");
+
+  if (v.searchLoading) {
+    el.innerHTML = `<div style="padding:16px;font-size:12.5px;font-weight:600;color:#9aa1ac">Searching…</div>`;
+    return;
+  }
+  if (v.searchResults.length === 0) {
+    el.innerHTML = `<div style="padding:16px;font-size:12.5px;font-weight:600;color:#9aa1ac">No matches for "${esc(v.searchQuery)}"</div>`;
+    return;
+  }
+  el.innerHTML = v.searchResults
+    .slice(0, 12)
+    .map((r) => `
+    <button data-action="openSearchResult" data-id="${esc(r.id)}" data-source="${esc(r.source)}" class="hover-filter-opt" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border:0;border-bottom:1px solid #f2f3f6;background:transparent;cursor:pointer;text-align:left">
+      <span style="flex:none;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#0b8ee8;background:#e8f4fd;border-radius:6px;padding:3px 7px;white-space:nowrap">${esc(SEARCH_SOURCE_LABELS[r.source] || r.source)}</span>
+      <span style="flex:1;min-width:0">
+        <span style="display:block;font-size:13px;font-weight:700;color:#13161c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.subject || r.title || "(no subject)")}</span>
+        <span style="display:block;margin-top:1px;font-size:11.5px;font-weight:500;color:#9aa1ac;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc([r.name, r.mailbox].filter(Boolean).join(" · "))}</span>
+      </span>
+    </button>`)
+    .join("");
+}
+
 // ---------------------------------------------------------------------------
 // MASTER RENDER
 // ---------------------------------------------------------------------------
@@ -2446,6 +2588,8 @@ function renderAll() {
   renderDismissed(v);
   renderConfirmSendModal();
   renderConfirmRescanModal(v);
+  renderFeedbackPopupModal();
+  renderSearchResults(v);
   renderSettings(v);
   renderThread(v);
 }
@@ -2511,6 +2655,20 @@ document.addEventListener("click", (e) => {
       renderAll();
       scanAndLoad();
       break;
+
+    case "openSearchResult": {
+      const source = el.dataset.source;
+      state.searchOpen = false;
+      const input = document.getElementById("searchInput");
+      if (input) input.value = "";
+      if (SEARCH_JUMPABLE_SOURCES[source]) {
+        openThread(el.dataset.id);
+      } else {
+        goTab(SEARCH_TAB_BY_SOURCE[source] || "home");
+      }
+      renderAll();
+      break;
+    }
 
     case "toggleFilter":
       state.openFilter = state.openFilter === el.dataset.filter ? null : el.dataset.filter;
@@ -2642,41 +2800,73 @@ document.addEventListener("click", (e) => {
       renderAll();
       break;
 
-    case "rateSent": {
-      const id = el.dataset.id, val = el.dataset.val;
-      const current = state.feedback[id] !== undefined ? state.feedback[id] : null;
-      const newVal = current === val ? null : val;
-      state.feedback = Object.assign({}, state.feedback, { [id]: newVal });
+    // ---------- Feedback popup (thumb -> tags -> comment -> Save) ----------
+    case "openFeedback": {
+      const id = el.dataset.id, kind = el.dataset.kind, val = el.dataset.val;
+      const source = kind === "sent" ? SENT.filter(m => m.id === id)[0] : DISMISSED.filter(m => m.id === id)[0];
+      // Prefer this-session optimistic overlays over the server-loaded
+      // source so reopening the popup after an earlier save this session
+      // (before the next full reload) shows what was actually saved.
+      const storedVal = state.feedback[id] !== undefined ? state.feedback[id] : ((source && source.feedback) || null);
+      const storedTags = state.feedbackTagsMap[id] !== undefined ? state.feedbackTagsMap[id] : ((source && source.feedbackTags) || []);
+      const storedNote = state.feedbackNotes[id] !== undefined ? state.feedbackNotes[id] : ((source && source.feedbackNote) || "");
+      const sameVal = storedVal === val;
+      state.feedbackPopup = {
+        id: id,
+        kind: kind,
+        val: val,
+        tags: sameVal ? storedTags.slice() : [],
+        note: sameVal ? storedNote : ""
+      };
       renderAll();
-      // Only real sent-table rows can take feedback — the "just sent this
-      // session" placeholders (before real Gmail send exists) have no
-      // backing row yet, so skip the PATCH for those and keep it visual-only.
-      if (SENT.some(m => m.id === id)) {
-        fetch("/api/sent/" + id + "/feedback", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ feedback: newVal })
-        }).catch(err => {
-          console.error("Failed to save feedback", err);
-          flash("Couldn't save feedback — refresh and try again");
-          renderAll();
-        });
-      }
       break;
     }
 
-    case "saveFeedbackNote": {
-      const id = el.dataset.id;
-      const note = state.feedbackNotes[id] !== undefined ? state.feedbackNotes[id] : "";
-      if (SENT.some(m => m.id === id)) {
-        fetch("/api/sent/" + id + "/feedback", {
+    case "pickFeedbackValue": {
+      if (!state.feedbackPopup) break;
+      const val = el.dataset.val;
+      state.feedbackPopup = Object.assign({}, state.feedbackPopup, {
+        val: state.feedbackPopup.val === val ? null : val
+      });
+      renderAll();
+      break;
+    }
+
+    case "toggleFeedbackTag": {
+      if (!state.feedbackPopup) break;
+      const tag = el.dataset.tag;
+      const tags = state.feedbackPopup.tags.indexOf(tag) >= 0
+        ? state.feedbackPopup.tags.filter(t => t !== tag)
+        : state.feedbackPopup.tags.concat([tag]);
+      state.feedbackPopup = Object.assign({}, state.feedbackPopup, { tags });
+      renderAll();
+      break;
+    }
+
+    case "closeFeedbackPopup":
+      state.feedbackPopup = null;
+      renderAll();
+      break;
+
+    case "saveFeedbackPopup": {
+      const p = state.feedbackPopup;
+      if (!p || !p.val) break;
+      state.feedback = Object.assign({}, state.feedback, { [p.id]: p.val });
+      state.feedbackTagsMap = Object.assign({}, state.feedbackTagsMap, { [p.id]: p.tags });
+      state.feedbackNotes = Object.assign({}, state.feedbackNotes, { [p.id]: p.note });
+      state.feedbackPopup = null;
+      renderAll();
+      // Only real backing rows can take feedback — Sent's "just sent this
+      // session" placeholders (before real Gmail send exists) have no
+      // backing row yet, so skip the PATCH for those and keep it visual-only.
+      if (p.kind !== "sent" || SENT.some(m => m.id === p.id)) {
+        fetch(FEEDBACK_ROUTE_BY_KIND[p.kind] + p.id + "/feedback", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ note })
-        }).then(() => { flash("Note saved"); renderAll(); }).catch(err => {
-          console.error("Failed to save note", err);
-          flash("Couldn't save note — refresh and try again");
-          renderAll();
+          body: JSON.stringify({ feedback: p.val, tags: p.tags, note: p.note })
+        }).catch(err => {
+          console.error("Failed to save feedback", err);
+          flash("Couldn't save feedback — refresh and try again");
         });
       }
       break;
@@ -2818,8 +3008,20 @@ document.addEventListener("click", (e) => {
       break;
 
     case "generateMcpToken":
-      flash("Token generation will be available once the MCP server backend is built");
-      renderAll();
+      el.disabled = true;
+      fetch("/api/mcp-token", { method: "POST" })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+        .then(data => {
+          state.mcpToken = data.token;
+          state.mcpTokenVisible = true;
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to generate MCP token", err);
+          el.disabled = false;
+          flash("Couldn't generate a token — try again");
+          renderAll();
+        });
       break;
 
     // ---------- Thread (draft review & send) ----------
@@ -3012,10 +3214,43 @@ function handleMailboxStatGo(go, mailbox) {
 // TEXT INPUT HANDLING (search bar) — read-on-demand, no re-render per keystroke
 // ---------------------------------------------------------------------------
 
+let searchDebounceTimer = null;
+function runSearch() {
+  const input = document.getElementById("searchInput");
+  const query = input ? input.value.trim() : "";
+  if (!query) {
+    state.searchOpen = false;
+    state.searchResults = [];
+    renderAll();
+    return;
+  }
+  state.searchQuery = query;
+  state.searchOpen = true;
+  state.searchLoading = true;
+  renderAll();
+  fetch("/api/search?q=" + encodeURIComponent(query))
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Request failed"))))
+    .then((data) => {
+      state.searchResults = data.results || [];
+      state.searchLoading = false;
+      renderAll();
+    })
+    .catch((err) => {
+      console.error("Search failed", err);
+      state.searchLoading = false;
+      state.searchResults = [];
+      renderAll();
+    });
+}
+
 document.addEventListener("input", (e) => {
   if (e.target && e.target.id === "searchInput") {
-    // Search is visual-only in Stage 1 (no backend search yet); just keep
-    // the value in the DOM element itself — do not re-render on keystroke.
+    // Real search now, but still debounced/read-on-demand rather than a
+    // full re-render per keystroke — #searchInput itself is part of the
+    // once-built shell (see BOOTSTRAP), never recreated by renderAll(), so
+    // this never risks losing focus/cursor position either way.
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(runSearch, 300);
     return;
   }
 
@@ -3041,11 +3276,25 @@ document.addEventListener("input", (e) => {
     return;
   }
 
-  if (e.target && e.target.dataset && e.target.dataset.action === "feedbackNote") {
-    // Same no-re-render-per-keystroke pattern as editDraft above — "Save"
-    // reads this from state when clicked.
-    state.feedbackNotes = Object.assign({}, state.feedbackNotes, { [e.target.dataset.id]: e.target.value });
+  if (e.target && e.target.id === "feedbackPopupNoteInput") {
+    // Same no-re-render-per-keystroke pattern as editDraft/instructionInput
+    // above — "Save" reads this from state.feedbackPopup when clicked.
+    if (state.feedbackPopup) state.feedbackPopup = Object.assign({}, state.feedbackPopup, { note: e.target.value });
     return;
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target && e.target.id === "searchInput") {
+    if (e.key === "Enter") {
+      clearTimeout(searchDebounceTimer);
+      runSearch();
+    } else if (e.key === "Escape") {
+      e.target.value = "";
+      state.searchOpen = false;
+      state.searchResults = [];
+      renderAll();
+    }
   }
 });
 
@@ -3097,19 +3346,41 @@ state.dismissedIds = [];
 renderAll();
 
 // Shared by the initial page load and the manual Rescan button — both need
-// the identical scan-then-refetch sequence. No real progress % is available
-// from the server (a single synchronous /api/scan call, no incremental
-// reporting), so state.scanning only drives the indeterminate bar in
-// #scanBanner, not an actual percentage.
+// the identical scan-then-refetch sequence. /api/scan streams one NDJSON
+// progress line per mailbox completed (see lib/scan.ts's onProgress) —
+// state.scanProgress stays null (indeterminate bar) until the first line
+// arrives, then holds real {done,total} for a determinate percentage.
 let scanInFlight = false;
 async function scanAndLoad() {
   if (scanInFlight) return;
   scanInFlight = true;
   state.scanning = true;
+  state.scanProgress = null;
   renderAll();
 
   try {
-    await fetch("/api/scan", { method: "POST" });
+    const scanRes = await fetch("/api/scan", { method: "POST" });
+    if (scanRes.body) {
+      const reader = scanRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let evt;
+          try { evt = JSON.parse(line); } catch { continue; }
+          if (evt.type === "progress") {
+            state.scanProgress = { done: evt.done, total: evt.total };
+            renderAll();
+          }
+        }
+      }
+    }
     const res = await fetch("/api/dashboard");
     if (res.status === 401) {
       document.getElementById("app").innerHTML =
@@ -3145,8 +3416,6 @@ async function scanAndLoad() {
     // dismissedIds still drives the gone()/live() filters that hide them
     // from the active-queue arrays.
     state.dismissedIds = data.dismissed.map((d) => d.id);
-    // formatSync (server-side) returns e.g. "scanned 3 min ago" — strip the
-    // verb since the pill already says "Last scanned {this}".
     // formatSync (server-side) returns either "scanned N min/h ago" or the
     // standalone sentence "not scanned yet" — the pill template always reads
     // "Last scanned {this}" / "· scanned {this}", so only the first form
@@ -3168,6 +3437,7 @@ async function scanAndLoad() {
     flash("Couldn't refresh — try again");
   } finally {
     state.scanning = false;
+    state.scanProgress = null;
     scanInFlight = false;
     renderAll();
   }

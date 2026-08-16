@@ -33,7 +33,16 @@ function guessAttendeeName(body: string): string {
   return match ? match[1] : "";
 }
 
-export async function runScan(ownerId: string) {
+export type ScanProgress = (done: number, total: number, mailboxAddress?: string) => void;
+
+// onProgress is per-mailbox granularity, not per-item — scanMailbox's five
+// AI-call-bearing phases (classification, stale-thread reconciliation,
+// follow-up judging, transcript summaries, expired-meeting fallbacks) each
+// only touch NEW items, so the true item count isn't knowable without doing
+// the diffing work first. Finer-grained progress would need restructuring
+// this into a count-then-execute two-pass pipeline — not done here; this is
+// real, honest progress at the resolution that's cheap to report.
+export async function runScan(ownerId: string, onProgress?: ScanProgress) {
   const supabase = supabaseServer();
 
   const { data: mailboxes, error: mailboxError } = await supabase
@@ -55,7 +64,10 @@ export async function runScan(ownerId: string) {
   const draftVoice = settings?.draft_voice ?? undefined;
 
   const summary: Record<string, string> = {};
+  const total = (mailboxes ?? []).length;
+  onProgress?.(0, total);
 
+  let i = 0;
   for (const mailbox of mailboxes ?? []) {
     try {
       await scanMailbox(mailbox as MailboxRow, senderLookup, ownerName, replyPromiseHours, draftVoice);
@@ -70,6 +82,8 @@ export async function runScan(ownerId: string) {
       await supabase.from("mailboxes").update({ state: "reauth" }).eq("id", mailbox.id);
       summary[mailbox.address] = `error: ${(err as Error).message}`;
     }
+    i += 1;
+    onProgress?.(i, total, mailbox.address);
   }
 
   return summary;
@@ -94,9 +108,15 @@ async function scanMailbox(
   // A message whose sender display name is literally the account owner's
   // own name (e.g. a note sent from a personal account to a work one) isn't
   // someone else awaiting a reply — it's Ellen, from a different address.
-  const threads = ownerName
+  const ownerFiltered = ownerName
     ? rawThreads.filter((t) => normalizeName(t.senderName) !== ownerName)
     : rawThreads;
+
+  // No one sends a real email with a blank subject line — a missing subject
+  // means junk/automated noise, not a genuine thread worth ever surfacing.
+  // getHeader() in lib/google/gmail.ts substitutes the literal string
+  // "(no subject)" for a missing Subject header, not an empty string.
+  const threads = ownerFiltered.filter((t) => t.subject.trim().length > 0 && t.subject.trim().toLowerCase() !== "(no subject)");
 
   // --- Threads (needs-reply / low-confidence) ---
   const { data: existingThreads } = await supabase

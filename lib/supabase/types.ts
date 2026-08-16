@@ -64,6 +64,7 @@ export interface Database {
           waited_hours: number | null;
           feedback: "up" | "down" | null;
           feedback_note: string | null;
+          feedback_tags: string[] | null;
           metadata: Record<string, unknown>;
           dismissed_at: string | null;
           created_at: string;
@@ -106,6 +107,7 @@ export interface Database {
           origin: "option_a" | "option_b" | "edited" | "custom" | "direct_in_gmail" | null;
           feedback: "up" | "down" | null;
           feedback_note: string | null;
+          feedback_tags: string[] | null;
           sent_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["sent"]["Row"]> & {
@@ -132,6 +134,9 @@ export interface Database {
           wait_deadline: string | null;
           metadata: Record<string, unknown>;
           dismissed_at: string | null;
+          feedback: "up" | "down" | null;
+          feedback_note: string | null;
+          feedback_tags: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -151,6 +156,9 @@ export interface Database {
           status: "pending" | "dismissed" | "sent";
           drafts: { label: string; text: string }[];
           dismissed_at: string | null;
+          feedback: "up" | "down" | null;
+          feedback_note: string | null;
+          feedback_tags: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -216,6 +224,20 @@ export interface Database {
           owner_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["app_settings"]["Row"]>;
+        Relationships: [];
+      };
+      mcp_tokens: {
+        Row: {
+          owner_id: string;
+          token_hash: string;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["mcp_tokens"]["Row"]> & {
+          owner_id: string;
+          token_hash: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["mcp_tokens"]["Row"]>;
         Relationships: [];
       };
     };

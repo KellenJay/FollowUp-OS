@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireOwnerId, assertOwnsMailbox, OwnershipError } from "@/lib/auth-guard";
 
-// Thumbs up/down + an optional free-text note on a resolved/sent thread —
-// both columns already existed on `sent` (migration 0002), just never had
-// a real persistence path; the UI only toggled client-side local state.
+// Same shape as app/api/sent/[id]/feedback/route.ts — thumb up/down, an
+// optional multi-select tag set, and an optional free-text note, all
+// independently updatable. Used for Dismissed-tab threads (needs-reply,
+// low-confidence, and dismissed manual-followups all live in this table).
 const VALID_FEEDBACK = ["up", "down", null] as const;
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -45,17 +46,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const ownerId = await requireOwnerId();
 
-    const { data: sentRow, error: sentErr } = await supabase
-      .from("sent")
+    const { data: threadRow, error: threadErr } = await supabase
+      .from("threads")
       .select("mailbox_id")
       .eq("id", id)
       .maybeSingle();
-    if (sentErr || !sentRow) {
-      return NextResponse.json({ error: sentErr?.message ?? "Sent message not found" }, { status: 404 });
+    if (threadErr || !threadRow) {
+      return NextResponse.json({ error: threadErr?.message ?? "Thread not found" }, { status: 404 });
     }
-    await assertOwnsMailbox(sentRow.mailbox_id, ownerId);
+    await assertOwnsMailbox(threadRow.mailbox_id, ownerId);
 
-    const { error } = await supabase.from("sent").update(update).eq("id", id);
+    const { error } = await supabase.from("threads").update(update).eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
