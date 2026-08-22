@@ -240,6 +240,27 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["mcp_tokens"]["Row"]>;
         Relationships: [];
       };
+      ai_call_logs: {
+        Row: {
+          id: string;
+          owner_id: string;
+          decision_point: string;
+          model: string;
+          latency_ms: number;
+          prompt_tokens: number | null;
+          completion_tokens: number | null;
+          total_tokens: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_call_logs"]["Row"]> & {
+          owner_id: string;
+          decision_point: string;
+          model: string;
+          latency_ms: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_call_logs"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -1,20 +1,40 @@
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { openaiClient, openaiModel } from "@/lib/openai/client";
+import { supabaseServer } from "@/lib/supabase/server";
 
-// Structured per-call line so Vercel's Runtime Logs/Observability has
-// something real to show for each AI call — until now these 4 call sites
-// logged nothing on success, only a caught error on failure.
-function logAiCall(decisionPoint: string, model: string, startedAt: number, usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null | undefined) {
+// Structured per-call line for Vercel's Runtime Logs/Observability (useful
+// for live tailing right after a scan), plus a row in ai_call_logs for a
+// permanent audit trail — Vercel's own log retention is a rolling window
+// (1 hour on Hobby, up to 30 days on paid Observability Plus) that eventually
+// deletes the data, not real storage. A logging failure here must never
+// break the actual AI call it's describing, so the insert is best-effort.
+async function logAiCall(ownerId: string, decisionPoint: string, model: string, startedAt: number, usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null | undefined) {
+  const latencyMs = Date.now() - startedAt;
   console.log(JSON.stringify({
     event: "ai_call",
     decision_point: decisionPoint,
     model,
-    latency_ms: Date.now() - startedAt,
+    latency_ms: latencyMs,
     prompt_tokens: usage?.prompt_tokens ?? null,
     completion_tokens: usage?.completion_tokens ?? null,
     total_tokens: usage?.total_tokens ?? null,
   }));
+
+  try {
+    const supabase = supabaseServer();
+    await supabase.from("ai_call_logs").insert({
+      owner_id: ownerId,
+      decision_point: decisionPoint,
+      model,
+      latency_ms: latencyMs,
+      prompt_tokens: usage?.prompt_tokens ?? null,
+      completion_tokens: usage?.completion_tokens ?? null,
+      total_tokens: usage?.total_tokens ?? null,
+    });
+  } catch (err) {
+    console.error("Failed to persist ai_call_logs row", err);
+  }
 }
 
 const ClassifyAndDraftSchema = z.object({
@@ -70,7 +90,7 @@ Example of the target tone (from a validated real draft, for calibration only �
 Label: "Direct with numbers"
 "Hi Marcus,\\n\\nGreat news on the MSA.\\n\\nFor the 400-employee tier we're looking at €11-14 per seat per year, with the lower end tied to a 24-month term. I'd take €12.50 to your steering group as the working number.\\n\\nThe pilot is 8 weeks - we shortened it after the Braithwaite run showed the baseline stabilises by week six.\\n\\nI'll send the one-pager with both scenarios today so your CFO can model it.\\n\\nBest,\\nEllen"`;
 
-export async function classifyAndDraft(thread: ThreadForClassification): Promise<ClassifyAndDraftResult> {
+export async function classifyAndDraft(thread: ThreadForClassification, ownerId: string): Promise<ClassifyAndDraftResult> {
   const client = openaiClient();
 
   const replyPromiseHours = thread.replyPromiseHours ?? 24;
@@ -97,7 +117,7 @@ ${thread.body.slice(0, 4000)}`;
     ],
     response_format: zodResponseFormat(ClassifyAndDraftSchema, "classify_and_draft"),
   });
-  logAiCall("classify_and_draft", openaiModel(), startedAt, completion.usage);
+  await logAiCall(ownerId, "classify_and_draft", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -149,7 +169,8 @@ WHY — one short, specific sentence referencing actual content from the message
 DRAFTS — exactly two distinct follow-up nudge options, only meaningful when WARRANTED is true (still provide two reasonable attempts if false, since the schema requires it, but they'll be discarded). Tone: warm-but-concrete — reference the original ask specifically, don't just say "following up." Each draft needs a short label describing its angle (e.g. "Brief nudge", "Offers to hop on a call"). Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
 export async function classifyFollowupRelevance(
-  message: SentMessageForClassification
+  message: SentMessageForClassification,
+  ownerId: string
 ): Promise<FollowupRelevanceResult> {
   const client = openaiClient();
 
@@ -169,7 +190,7 @@ ${message.body.slice(0, 4000)}`;
     ],
     response_format: zodResponseFormat(FollowupRelevanceSchema, "followup_relevance"),
   });
-  logAiCall("followup_relevance", openaiModel(), startedAt, completion.usage);
+  await logAiCall(ownerId, "followup_relevance", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -213,7 +234,7 @@ const TRANSCRIPT_SYSTEM_PROMPT = `You summarize a call transcript (from a meetin
 
 3. DRAFTS — exactly two distinct follow-up note options referencing specific details/action items from the call. Tone: warm-but-concrete, one specific next step per draft, never generic pleasantries. Each needs a short label describing its angle. Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
-export async function summarizeTranscript(input: TranscriptForSummary): Promise<TranscriptSummaryResult> {
+export async function summarizeTranscript(input: TranscriptForSummary, ownerId: string): Promise<TranscriptSummaryResult> {
   const client = openaiClient();
 
   const userPrompt = `Meeting: ${input.title}
@@ -231,7 +252,7 @@ ${input.transcriptBody.slice(0, 12000)}`;
     ],
     response_format: zodResponseFormat(TranscriptSummarySchema, "transcript_summary"),
   });
-  logAiCall("transcript_summary", openaiModel(), startedAt, completion.usage);
+  await logAiCall(ownerId, "transcript_summary", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -269,7 +290,7 @@ const FALLBACK_SYSTEM_PROMPT = `A call ended and no meeting-recorder transcript 
 
 2. DRAFTS — exactly two distinct generic-but-informed follow-up note options ("great to catch up — following up on X" style, where X is grounded in the email history if possible). Tone: warm-but-concrete, never generic pleasantries. Each needs a short label describing its angle. Every draft must end with the sign-off "Best,\nEllen" — never a different closing line or name.`;
 
-export async function draftFallbackFollowup(input: MeetingForFallback): Promise<FallbackFollowupResult> {
+export async function draftFallbackFollowup(input: MeetingForFallback, ownerId: string): Promise<FallbackFollowupResult> {
   const client = openaiClient();
 
   const historyText = input.recentHistory.length
@@ -291,7 +312,7 @@ ${historyText}`;
     ],
     response_format: zodResponseFormat(FallbackFollowupSchema, "fallback_followup"),
   });
-  logAiCall("fallback_followup", openaiModel(), startedAt, completion.usage);
+  await logAiCall(ownerId, "fallback_followup", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {

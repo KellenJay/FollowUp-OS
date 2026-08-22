@@ -70,7 +70,7 @@ export async function runScan(ownerId: string, onProgress?: ScanProgress) {
   let i = 0;
   for (const mailbox of mailboxes ?? []) {
     try {
-      await scanMailbox(mailbox as MailboxRow, senderLookup, ownerName, replyPromiseHours, draftVoice);
+      await scanMailbox(mailbox as MailboxRow, senderLookup, ownerName, replyPromiseHours, draftVoice, ownerId);
       await supabase
         .from("mailboxes")
         .update({ state: "ok", last_scanned_at: new Date().toISOString() })
@@ -94,7 +94,8 @@ async function scanMailbox(
   senderLookup: SenderLookup,
   ownerName: string | null,
   replyPromiseHours: number,
-  draftVoice: string | undefined
+  draftVoice: string | undefined,
+  ownerId: string
 ) {
   const supabase = supabaseServer();
   const auth = oauthClientFor(mailbox);
@@ -168,7 +169,7 @@ async function scanMailbox(
         waitedHours: t.waitedHours,
         replyPromiseHours,
         draftVoice,
-      });
+      }, ownerId);
     } catch (err) {
       result = {
         classification: "low_confidence" as const,
@@ -322,7 +323,7 @@ async function scanMailbox(
             body: s.body,
             recipientRaw: s.recipientRaw,
             businessDaysWaited: businessDays,
-          });
+          }, ownerId);
         } catch (err) {
           relevance = {
             warranted: true,
@@ -405,7 +406,7 @@ async function scanMailbox(
           title: match.title ?? t.subject,
           attendeeName: match.attendee_name ?? "",
           transcriptBody: t.body,
-        });
+        }, ownerId);
       } catch (err) {
         result = {
           summary: `Summarization failed (${(err as Error).message}), see full transcript in Gmail.`,
@@ -445,7 +446,7 @@ async function scanMailbox(
           title: standaloneTitle,
           attendeeName: standaloneAttendee,
           transcriptBody: t.body,
-        });
+        }, ownerId);
       } catch (err) {
         standaloneResult = {
           summary: `Summarization failed (${(err as Error).message}), see full transcript in Gmail.`,
@@ -505,7 +506,7 @@ async function scanMailbox(
         title: m.title ?? "",
         attendeeName: m.attendee_name ?? "",
         recentHistory: history,
-      });
+      }, ownerId);
     } catch (err) {
       fallback = {
         summary: `No transcript found, and drafting from email history failed (${(err as Error).message}).`,
