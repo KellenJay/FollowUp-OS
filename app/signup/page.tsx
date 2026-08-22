@@ -58,7 +58,7 @@ export default function SignupPage() {
       // flow) rather than duplicating it in the signup route.
       const result = await signIn("credentials", { email, password, redirect: false });
       if (result?.error) {
-        setError("Account created — sign in from the Connect page.");
+        setError("Account created. Sign in from the Connect page.");
         setSubmitting(false);
         return;
       }

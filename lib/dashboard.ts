@@ -3,7 +3,7 @@ import { avatarFor, initialsFor } from "@/lib/avatar";
 import { getAccountSettings } from "@/lib/account";
 
 const PLACEHOLDER_DRAFT_TEXT =
-  "AI-drafted replies aren't wired up yet — that lands in the next build step. Use the custom reply box below for now, or reply directly in Gmail.";
+  "AI-drafted replies aren't wired up yet, that lands in the next build step. Use the custom reply box below for now, or reply directly in Gmail.";
 
 function placeholderDrafts() {
   return [
@@ -48,7 +48,23 @@ const DRAFT_TONES = [
   { tone: "#e8e2f8", toneText: "#54459b" },
 ];
 
-const DISMISSED_RETENTION_DAYS = 5;
+const DISMISSED_RETENTION_DAYS = 3;
+
+// Matches lib/google/gmail.ts's INBOX_SCAN_DAYS=7 Gmail query window — a
+// thread's updated_at only ever advances while a scan still finds it inside
+// that window (see scan.ts), so once updated_at falls further behind than
+// this, the thread has aged out of Gmail's own recency window without ever
+// being replied to or dismissed. Rather than let those pile up in the active
+// queue forever, they drop out of view here (row stays in the database — an
+// active reply from the other side bumps updated_at again on the next scan
+// and brings it right back).
+const ACTIVE_QUEUE_WINDOW_DAYS = 7;
+
+function isWithinActiveWindow(updatedAt: string | null): boolean {
+  if (!updatedAt) return true;
+  const cutoff = Date.now() - ACTIVE_QUEUE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return new Date(updatedAt).getTime() >= cutoff;
+}
 
 // No cron/scheduled-job infrastructure exists in this app (confirmed
 // 2026-08-14 — the `cron_runs` table is unused scaffolding) — scanning
@@ -135,7 +151,7 @@ export async function loadDashboard(ownerId: string) {
   }
 
   const needsReply = filteredThreadRows
-    .filter((t) => t.status === "needs_reply")
+    .filter((t) => t.status === "needs_reply" && isWithinActiveWindow(t.updated_at))
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
       return {
@@ -161,7 +177,7 @@ export async function loadDashboard(ownerId: string) {
     });
 
   const lowConf = filteredThreadRows
-    .filter((t) => t.status === "low_confidence")
+    .filter((t) => t.status === "low_confidence" && isWithinActiveWindow(t.updated_at))
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
       return {
@@ -225,7 +241,7 @@ export async function loadDashboard(ownerId: string) {
   // waited, time, why, low) too, not just the follow-up shape, so the
   // client can move it back to Needs-reply/Low-confidence without a refetch.
   const manualFollowUps = filteredThreadRows
-    .filter((t) => t.status === "manual_followup")
+    .filter((t) => t.status === "manual_followup" && isWithinActiveWindow(t.updated_at))
     .map((t) => {
       drafts[t.id] = aiDraftsByThread.get(t.id) ?? placeholderDrafts();
       return {
@@ -391,8 +407,12 @@ export async function loadDashboard(ownerId: string) {
     address: m.address,
     // threadRows now includes dismissed rows too (fetched above for the
     // Dismissed tab) — exclude them here so a dismissed thread doesn't
-    // inflate the sidebar's active-count badge.
-    count: filteredThreadRows.filter((t) => t.mailbox_id === m.id && t.status !== "sent" && t.status !== "dismissed").length,
+    // inflate the sidebar's active-count badge. Also matches the same
+    // active-window filter applied to needsReply/lowConf/manualFollowUps
+    // above, so the badge count never disagrees with what's actually shown.
+    count: filteredThreadRows.filter(
+      (t) => t.mailbox_id === m.id && t.status !== "sent" && t.status !== "dismissed" && isWithinActiveWindow(t.updated_at)
+    ).length,
     dot: DOT_COLORS[i % DOT_COLORS.length],
     role: `Connected · ${m.address.split("@")[1] ?? ""}`,
     state: m.state,

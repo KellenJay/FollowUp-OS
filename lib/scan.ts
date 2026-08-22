@@ -173,7 +173,7 @@ async function scanMailbox(
       result = {
         classification: "low_confidence" as const,
         tier: "fyi" as const,
-        why: `Classification failed (${(err as Error).message}) — needs manual review`,
+        why: `Classification failed (${(err as Error).message}), needs manual review`,
         drafts: [],
       };
     }
@@ -326,7 +326,7 @@ async function scanMailbox(
         } catch (err) {
           relevance = {
             warranted: true,
-            why: `Classification failed (${(err as Error).message}) — flagged for manual review`,
+            why: `Classification failed (${(err as Error).message}), flagged for manual review`,
             drafts: [],
           };
         }
@@ -408,7 +408,7 @@ async function scanMailbox(
         });
       } catch (err) {
         result = {
-          summary: `Summarization failed (${(err as Error).message}) — see full transcript in Gmail.`,
+          summary: `Summarization failed (${(err as Error).message}), see full transcript in Gmail.`,
           actionItems: [] as string[],
           drafts: [] as { label: string; text: string }[],
         };
@@ -448,7 +448,7 @@ async function scanMailbox(
         });
       } catch (err) {
         standaloneResult = {
-          summary: `Summarization failed (${(err as Error).message}) — see full transcript in Gmail.`,
+          summary: `Summarization failed (${(err as Error).message}), see full transcript in Gmail.`,
           actionItems: [] as string[],
           drafts: [] as { label: string; text: string }[],
         };

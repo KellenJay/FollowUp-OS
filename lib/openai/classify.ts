@@ -2,6 +2,21 @@ import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { openaiClient, openaiModel } from "@/lib/openai/client";
 
+// Structured per-call line so Vercel's Runtime Logs/Observability has
+// something real to show for each AI call — until now these 4 call sites
+// logged nothing on success, only a caught error on failure.
+function logAiCall(decisionPoint: string, model: string, startedAt: number, usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null | undefined) {
+  console.log(JSON.stringify({
+    event: "ai_call",
+    decision_point: decisionPoint,
+    model,
+    latency_ms: Date.now() - startedAt,
+    prompt_tokens: usage?.prompt_tokens ?? null,
+    completion_tokens: usage?.completion_tokens ?? null,
+    total_tokens: usage?.total_tokens ?? null,
+  }));
+}
+
 const ClassifyAndDraftSchema = z.object({
   classification: z.enum(["needs_reply", "low_confidence"]),
   tier: z.enum(["today", "week", "fyi"]),
@@ -73,6 +88,7 @@ ${thread.body.slice(0, 4000)}`;
     ? `${SYSTEM_PROMPT}\n\nThe user has also set a specific voice preference for drafts, which takes priority over the tone guidance above where they conflict: "${thread.draftVoice}"`
     : SYSTEM_PROMPT;
 
+  const startedAt = Date.now();
   const completion = await client.chat.completions.parse({
     model: openaiModel(),
     messages: [
@@ -81,6 +97,7 @@ ${thread.body.slice(0, 4000)}`;
     ],
     response_format: zodResponseFormat(ClassifyAndDraftSchema, "classify_and_draft"),
   });
+  logAiCall("classify_and_draft", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -143,6 +160,7 @@ Business days waited with no reply: ${message.businessDaysWaited}
 Body of the sent message:
 ${message.body.slice(0, 4000)}`;
 
+  const startedAt = Date.now();
   const completion = await client.chat.completions.parse({
     model: openaiModel(),
     messages: [
@@ -151,6 +169,7 @@ ${message.body.slice(0, 4000)}`;
     ],
     response_format: zodResponseFormat(FollowupRelevanceSchema, "followup_relevance"),
   });
+  logAiCall("followup_relevance", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -203,6 +222,7 @@ Attendee: ${input.attendeeName}
 Transcript:
 ${input.transcriptBody.slice(0, 12000)}`;
 
+  const startedAt = Date.now();
   const completion = await client.chat.completions.parse({
     model: openaiModel(),
     messages: [
@@ -211,6 +231,7 @@ ${input.transcriptBody.slice(0, 12000)}`;
     ],
     response_format: zodResponseFormat(TranscriptSummarySchema, "transcript_summary"),
   });
+  logAiCall("transcript_summary", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {
@@ -261,6 +282,7 @@ Attendee: ${input.attendeeName}
 Recent email history with this contact (most relevant available):
 ${historyText}`;
 
+  const startedAt = Date.now();
   const completion = await client.chat.completions.parse({
     model: openaiModel(),
     messages: [
@@ -269,6 +291,7 @@ ${historyText}`;
     ],
     response_format: zodResponseFormat(FallbackFollowupSchema, "fallback_followup"),
   });
+  logAiCall("fallback_followup", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) {

@@ -71,6 +71,14 @@ nav[data-role="sidebar-nav"] { scrollbar-width: thin; }
   0% { left: -30%; }
   100% { left: 100%; }
 }
+/* Once real {done,total} progress arrives the bar switches to a determinate
+   width, but a mailbox's AI phases can take a long time with no sub-ticks —
+   pulsing opacity keeps it visibly "alive" instead of freezing solid at
+   whatever percentage the current mailbox started from. */
+@keyframes scan-bar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
 .scan-bar-track { position: relative; overflow: hidden; background: #eef1f5; }
 .scan-bar-fill {
   position: absolute;

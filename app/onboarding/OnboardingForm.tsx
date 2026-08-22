@@ -55,7 +55,7 @@ export default function OnboardingForm({
 
       {candidates.length === 0 ? (
         <p style={{ fontSize: 13, fontWeight: 600, color: "#9aa1ac", marginBottom: 32 }}>
-          We didn&apos;t find enough email history yet to suggest anyone — that&apos;s fine, you can flag important
+          We didn&apos;t find enough email history yet to suggest anyone. That&apos;s fine, you can flag important
           senders anytime directly from their message card.
         </p>
       ) : (

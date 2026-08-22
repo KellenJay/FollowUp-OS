@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   if (!code) return failRedirect("Google sign-in was cancelled or denied");
   if (!returnedState || !expectedState || returnedState !== expectedState) {
-    return failRedirect("Sign-in link expired — try again");
+    return failRedirect("Sign-in link expired, try again");
   }
 
   let ownerId: string;
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   try {
     const { tokens } = await client.getToken(code);
     if (!tokens.refresh_token) {
-      return failRedirect("Google didn't grant offline access — try again and approve all permissions");
+      return failRedirect("Google didn't grant offline access, try again and approve all permissions");
     }
     client.setCredentials(tokens);
 

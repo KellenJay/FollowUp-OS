@@ -33,10 +33,10 @@ const THREADS = [
   {
     id: "t1", tier: "today", waited: "51h",
     name: "Marcus Delaney", org: "Northwind Logistics", initials: "MD", av: "linear-gradient(135deg,#cfe2f7,#b6cdf0)",
-    subject: "Re: Q3 pilot pricing — need your numbers by Friday",
+    subject: "Re: Q3 pilot pricing, need your numbers by Friday",
     snippet: "Legal cleared the MSA, so the only open item is the per-seat figure for the 400-employee tier. If you can get me a range before Friday I can take it to the steering group.",
     mailbox: "partnerships@heartcount.com", time: "Wed 09:14",
-    body: "Hi Ellen,\n\nGood news — legal cleared the MSA on Monday with no redlines on the data-processing schedule.\n\nThe only open item is the per-seat figure for the 400-employee tier. Our CFO wants a range rather than a single number so she can model best/worst case for the Q3 board pack.\n\nIf you can get me something before Friday I can take it to the steering group next week instead of waiting for the August cycle.\n\nAlso — is the pilot still 8 weeks, or did we land on 10?\n\nThanks,\nMarcus",
+    body: "Hi Ellen,\n\nGood news, legal cleared the MSA on Monday with no redlines on the data-processing schedule.\n\nThe only open item is the per-seat figure for the 400-employee tier. Our CFO wants a range rather than a single number so she can model best/worst case for the Q3 board pack.\n\nIf you can get me something before Friday I can take it to the steering group next week instead of waiting for the August cycle.\n\nAlso, is the pilot still 8 weeks, or did we land on 10?\n\nThanks,\nMarcus",
     why: "Direct question with a Friday deadline · thread has been open 51 hours"
   },
   {
@@ -45,14 +45,14 @@ const THREADS = [
     subject: "Can you intro me to Aster's People Ops lead?",
     snippet: "You mentioned you know Dana Whitfield from the Lisbon summit. We're circling Aster for the engagement survey rollout and a warm intro would move this months faster.",
     mailbox: "ellen@heartcount.com", time: "Thu 16:40",
-    body: "Ellen,\n\nQuick ask. You mentioned at the Lisbon summit that you know Dana Whitfield, Aster's People Ops lead.\n\nWe're circling Aster for the engagement survey rollout and their procurement route is famously slow. A warm intro from you would move this months faster than my cold sequence.\n\nHappy to draft the forwardable blurb if that's easier — just say the word.\n\nPriya",
+    body: "Ellen,\n\nQuick ask. You mentioned at the Lisbon summit that you know Dana Whitfield, Aster's People Ops lead.\n\nWe're circling Aster for the engagement survey rollout and their procurement route is famously slow. A warm intro from you would move this months faster than my cold sequence.\n\nHappy to draft the forwardable blurb if that's easier, just say the word.\n\nPriya",
     why: "Asks for a specific action from you · no reply sent yet"
   },
   {
     id: "t3", tier: "week", waited: "3d",
     name: "Tom Okafor", org: "Meridian Consulting", initials: "TO", av: "linear-gradient(135deg,#cdeadd,#a9d8c4)",
     subject: "Follow-up from Tuesday's call: revenue share terms",
-    snippet: "Recapping where we landed — 40% referral share on year one, reviewed annually. Sending the partner one-pager Monday unless you want changes to the tiering.",
+    snippet: "Recapping where we landed: 40% referral share on year one, reviewed annually. Sending the partner one-pager Monday unless you want changes to the tiering.",
     mailbox: "partnerships@heartcount.com", time: "Mon 11:02",
     body: "Hi Ellen,\n\nRecapping Tuesday so we have it in writing:\n\n• 40% referral share on year-one contract value, reviewed annually\n• Meridian owns first-line qualification, HeartCount runs the demo\n• Co-branded one-pager, our logo secondary\n\nI'll send the partner one-pager to my team Monday unless you want changes to the tiering. Nothing here is binding until we both sign, obviously.\n\nBest,\nTom",
     why: "Recap awaiting your confirmation · Monday deadline"
@@ -60,10 +60,10 @@ const THREADS = [
   {
     id: "t4", tier: "week", waited: "2d",
     name: "Sofia Bergström", org: "Nordic HR Forum", initials: "SB", av: "linear-gradient(135deg,#e9dcf7,#d3c3ef)",
-    subject: "Speaking slot — October summit, Stockholm",
+    subject: "Speaking slot: October summit, Stockholm",
     snippet: "We have a 25-minute slot on the culture-measurement track and I'd love it to be you. Need a title and abstract by the 8th for the printed programme.",
     mailbox: "events@heartcount.com", time: "Tue 08:25",
-    body: "Hi Ellen,\n\nWe have a 25-minute slot open on the culture-measurement track at the October summit in Stockholm, and I'd love it to be you — your Lisbon session had the highest rated Q&A of the day.\n\nI need a title and a three-line abstract by the 8th for the printed programme. Travel and two nights covered.\n\nWould also be a good room for the Thrivea partnership story if you want to work that in.\n\nSofia",
+    body: "Hi Ellen,\n\nWe have a 25-minute slot open on the culture-measurement track at the October summit in Stockholm, and I'd love it to be you, your Lisbon session had the highest rated Q&A of the day.\n\nI need a title and a three-line abstract by the 8th for the printed programme. Travel and two nights covered.\n\nWould also be a good room for the Thrivea partnership story if you want to work that in.\n\nSofia",
     why: "Invitation with a deadline · low urgency but time-boxed"
   }
 ];
@@ -72,20 +72,20 @@ const LOWCONF = [
   {
     id: "l1", tier: "fyi", waited: "1d", low: true,
     name: "Daniel Kovač", org: "Vector Talent Partners", initials: "DK", av: "linear-gradient(135deg,#dfe6f2,#c8d3e6)",
-    subject: "Reseller agreement — who owns renewals?",
+    subject: "Reseller agreement: who owns renewals?",
     snippet: "Before I take this to our leadership I need to know whether renewals sit with us or with you after year one.",
     mailbox: "bd@heartcount.com", time: "Thu 07:12",
-    body: "Ellen,\n\nBefore I take this to our leadership I need clarity on one thing: after year one, who owns the renewal conversation — Vector or HeartCount?\n\nOur standard reseller paper assumes we do, but I don't want to assume with you.\n\nDaniel",
-    why: "No prior thread with this sender in the scanned window — commercial terms may already be agreed elsewhere"
+    body: "Ellen,\n\nBefore I take this to our leadership I need clarity on one thing: after year one, who owns the renewal conversation, Vector or HeartCount?\n\nOur standard reseller paper assumes we do, but I don't want to assume with you.\n\nDaniel",
+    why: "No prior thread with this sender in the scanned window, commercial terms may already be agreed elsewhere"
   },
   {
     id: "l2", tier: "fyi", waited: "2d", low: true,
     name: "Renata Alves", org: "unknown domain", initials: "RA", av: "linear-gradient(135deg,#f5dde8,#ecc6d8)",
     subject: "Following up on our conversation in Porto",
-    snippet: "Great to meet you last month — wanted to pick up the thread on the survey pilot we discussed over dinner.",
+    snippet: "Great to meet you last month, wanted to pick up the thread on the survey pilot we discussed over dinner.",
     mailbox: "ellen@heartcount.com", time: "Wed 21:48",
-    body: "Hi Ellen,\n\nGreat to meet you last month — wanted to pick up the thread on the survey pilot we discussed over dinner.\n\nIs the September start still realistic on your side?\n\nRenata",
-    why: "Refers to an off-email conversation I can't see — unclear which company or pilot this is"
+    body: "Hi Ellen,\n\nGreat to meet you last month, wanted to pick up the thread on the survey pilot we discussed over dinner.\n\nIs the September start still realistic on your side?\n\nRenata",
+    why: "Refers to an off-email conversation I can't see, unclear which company or pilot this is"
   }
 ];
 
@@ -95,16 +95,16 @@ const FOLLOWUPS = [
     name: "Felix Brandt", org: "Continental Facilities", initials: "FB", av: "linear-gradient(135deg,#dfe6f2,#c8d3e6)",
     subject: "Intro to your Nordics HR lead?",
     snippet: "Asked Felix for a warm intro to Continental's Nordics HR lead after he offered one on the call. Nine business days, no reply.",
-    body: "Hi Felix,\n\nGreat speaking on Tuesday. You mentioned you'd be happy to introduce me to whoever owns HR for the Nordics region — if that's still on the table I'd welcome it.\n\nHappy to send a short forwardable blurb so it's one click for you.\n\nBest,\nEllen",
+    body: "Hi Felix,\n\nGreat speaking on Tuesday. You mentioned you'd be happy to introduce me to whoever owns HR for the Nordics region, if that's still on the table I'd welcome it.\n\nHappy to send a short forwardable blurb so it's one click for you.\n\nBest,\nEllen",
     nudge: "He offered the intro himself, so a short one-line bump is low risk."
   },
   {
     id: "f2", days: 7, sent: "Sent Jul 16", mailbox: "bd@heartcount.com",
     name: "Daniel Kovač", org: "Vector Talent Partners", initials: "DK", av: "linear-gradient(135deg,#dfe6f2,#c8d3e6)",
-    subject: "Reseller agreement — revised renewal tiering",
+    subject: "Reseller agreement: revised renewal tiering",
     snippet: "Sent Daniel the revised 40/25 tiering after his renewals question. He said he needed it for a leadership review that has now passed.",
     body: "Hi Daniel,\n\nAs promised, the revised tiering: 40% on year-one contract value, 25% on renewals while Vector stays first-line support.\n\nI've attached the one-pager in the same shape your leadership reviewed last quarter.\n\nLet me know if the renewal split works and I'll have our legal team draft.\n\nEllen",
-    nudge: "His internal review date has passed — worth asking what came out of it."
+    nudge: "His internal review date has passed, worth asking what came out of it."
   },
   {
     id: "f3", days: 5, sent: "Sent Jul 18", mailbox: "ellen@heartcount.com",
@@ -112,7 +112,7 @@ const FOLLOWUPS = [
     subject: "Pricing for the September survey pilot",
     snippet: "Sent the nonprofit-adjacent pricing for the 180-person pilot she asked about in Porto. No reply in five business days.",
     body: "Hi Renata,\n\nGood to reconnect. Pricing for a 180-person pilot, as discussed:\n\n• 8-week pilot, €9.50 per seat\n• Two pulse cycles included\n• Rolls into an annual agreement at €11 if you continue\n\nSeptember start is still open on our onboarding calendar for another two weeks.\n\nEllen",
-    nudge: "Her September start window closes in two weeks — time-sensitive."
+    nudge: "Her September start window closes in two weeks, time-sensitive."
   },
   {
     id: "f4", days: 4, sent: "Sent Jul 21", mailbox: "partnerships@heartcount.com",
@@ -120,20 +120,20 @@ const FOLLOWUPS = [
     subject: "Recap + next steps from Thursday's call",
     snippet: "Recapped the co-selling motion and asked her to confirm the two pilot stores. Awaiting confirmation before we can scope.",
     body: "Hi Ingrid,\n\nRecapping Thursday:\n\n• Skyline picks two pilot stores, we run the baseline survey in both\n• HeartCount handles enablement for the store managers\n• Review at week six, decide on the full estate after\n\nCan you confirm the two stores so our team can scope the rollout?\n\nEllen",
-    nudge: "We are blocked on her answer — everything downstream waits on the two store names."
+    nudge: "We are blocked on her answer, everything downstream waits on the two store names."
   }
 ];
 
 const SENT = [
   { id: "s1", name: "Hannah Weiss", org: "Braithwaite Group", initials: "HW", av: "linear-gradient(135deg,#cfe2f7,#b6cdf0)",
     subject: "Re: Pilot scope for the Munich team", mailbox: "partnerships@heartcount.com", time: "sent 14:22", origin: "edited from option A",
-    body: "Hi Hannah — 6 weeks works. I'd keep the Munich team as the only cohort for the pilot so the baseline stays clean, then widen in October. Sending the scope doc tomorrow." },
+    body: "Hi Hannah, 6 weeks works. I'd keep the Munich team as the only cohort for the pilot so the baseline stays clean, then widen in October. Sending the scope doc tomorrow." },
   { id: "s2", name: "Oliver Grant", org: "Kestrel Advisory", initials: "OG", av: "linear-gradient(135deg,#cdeadd,#a9d8c4)",
     subject: "Re: Intro to Thrivea's implementation lead", mailbox: "ellen@heartcount.com", time: "sent 11:05", origin: "written directly by you",
-    body: "Oliver — happy to make that intro. Copying Maya, who runs implementation at Thrivea. Maya, Oliver is looking at the combined engagement + HRIS setup for a 700-person client." },
+    body: "Oliver, happy to make that intro. Copying Maya, who runs implementation at Thrivea. Maya, Oliver is looking at the combined engagement + HRIS setup for a 700-person client." },
   { id: "s3", name: "Amara Diallo", org: "Lumen Foundation", initials: "AD", av: "linear-gradient(135deg,#f7ddc4,#f3c9ae)",
     subject: "Re: NGO pricing for a 120-person team", mailbox: "ellen@heartcount.com", time: "sent Wed 17:40", origin: "edited from option B",
-    body: "Amara — for a 120-person NGO team we can hold the nonprofit rate through the end of the year. I've attached the one-pager with the two tiers so you can share it internally." }
+    body: "Amara, for a 120-person NGO team we can hold the nonprofit rate through the end of the year. I've attached the one-pager with the two tiers so you can share it internally." }
 ];
 
 const SEEDS = [
@@ -149,37 +149,37 @@ const DISMISSED = [];
 const DRAFTS = {
   t1: [
     { label: "Direct with numbers", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Marcus,\n\nGreat news on the MSA.\n\nFor the 400-employee tier we're looking at €11–14 per seat per year, with the lower end tied to a 24-month term. I'd take €12.50 to your steering group as the working number.\n\nThe pilot is 8 weeks — we shortened it after the Braithwaite run showed the baseline stabilises by week six.\n\nI'll send the one-pager with both scenarios today so your CFO can model it.\n\nBest,\nEllen" },
+      text: "Hi Marcus,\n\nGreat news on the MSA.\n\nFor the 400-employee tier we're looking at €11–14 per seat per year, with the lower end tied to a 24-month term. I'd take €12.50 to your steering group as the working number.\n\nThe pilot is 8 weeks, we shortened it after the Braithwaite run showed the baseline stabilises by week six.\n\nI'll send the one-pager with both scenarios today so your CFO can model it.\n\nBest,\nEllen" },
     { label: "Cautious, asks first", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Marcus,\n\nThanks for pushing this through legal.\n\nBefore I put a range in writing: is the 400 figure headcount today, or including the two sites you're onboarding in Q4? It moves the tier, and I'd rather give you a number your CFO can hold us to.\n\nOn the pilot — 8 weeks is what I'd recommend.\n\nCan send the range within the day once you confirm.\n\nBest,\nEllen" }
+      text: "Hi Marcus,\n\nThanks for pushing this through legal.\n\nBefore I put a range in writing: is the 400 figure headcount today, or including the two sites you're onboarding in Q4? It moves the tier, and I'd rather give you a number your CFO can hold us to.\n\nOn the pilot, 8 weeks is what I'd recommend.\n\nCan send the range within the day once you confirm.\n\nBest,\nEllen" }
   ],
   t2: [
     { label: "Warm intro, forwardable", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Priya,\n\nHappy to do it. Dana and I sat on the same panel in Lisbon and she's easy to reach.\n\nI'll send her a short note this week framing you as the person running the engagement survey side — no pitch, just the introduction. If she bites I'll loop you in directly.\n\nDon't write the blurb, I'd rather it read like me.\n\nEllen" },
+      text: "Hi Priya,\n\nHappy to do it. Dana and I sat on the same panel in Lisbon and she's easy to reach.\n\nI'll send her a short note this week framing you as the person running the engagement survey side, no pitch, just the introduction. If she bites I'll loop you in directly.\n\nDon't write the blurb, I'd rather it read like me.\n\nEllen" },
     { label: "Yes, with a condition", tone: "#e8e2f8", toneText: "#54459b",
       text: "Hi Priya,\n\nI can make that intro, with one ask: let me go first and keep it to a two-line note, so it doesn't land as an inbound pitch.\n\nIf Dana replies I'll hand the thread to you the same day. If she doesn't within two weeks, we try the procurement route instead.\n\nSend me one line on what's in it for her team and I'll use it.\n\nEllen" }
   ],
   t3: [
     { label: "Confirms the terms", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Tom,\n\nRecap matches my notes — 40% year-one referral share reviewed annually, Meridian qualifying, us running the demo, co-branded with your logo secondary.\n\nOne clarification before Monday: the 40% applies to year-one contract value net of any implementation fee. Everything else is as written.\n\nGo ahead with the one-pager.\n\nEllen" },
+      text: "Hi Tom,\n\nRecap matches my notes: 40% year-one referral share reviewed annually, Meridian qualifying, us running the demo, co-branded with your logo secondary.\n\nOne clarification before Monday: the 40% applies to year-one contract value net of any implementation fee. Everything else is as written.\n\nGo ahead with the one-pager.\n\nEllen" },
     { label: "Asks for a tiering change", tone: "#e8e2f8", toneText: "#54459b",
       text: "Hi Tom,\n\nThanks for writing it up. One change before you circulate.\n\nI'd like the share tiered: 40% on year one, 25% on renewal while Meridian stays the account's first line of support. Flat 40% forever is hard for me to defend internally past year two.\n\nIf that works, send the one-pager Monday and I'll counter-sign.\n\nEllen" }
   ],
   t4: [
     { label: "Accepts with a title", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Sofia,\n\nYes — I'd love the slot.\n\nWorking title: \"What people actually tell you when nobody scores them.\" Abstract by the 8th, and yes, the Thrivea partnership makes a natural second half.\n\nCan you confirm room size and whether the Q&A is inside the 25 minutes?\n\nEllen" },
+      text: "Hi Sofia,\n\nYes, I'd love the slot.\n\nWorking title: \"What people actually tell you when nobody scores them.\" Abstract by the 8th, and yes, the Thrivea partnership makes a natural second half.\n\nCan you confirm room size and whether the Q&A is inside the 25 minutes?\n\nEllen" },
     { label: "Accepts, defers the abstract", tone: "#e8e2f8", toneText: "#54459b",
       text: "Hi Sofia,\n\nCount me in for the culture-measurement track.\n\nI'll have the title and abstract to you by the 6th so you have slack before the programme locks. Travel details whenever convenient.\n\nOne question: would you rather I keep it product-neutral, or is the Thrivea partnership story fair game for that room?\n\nEllen" }
   ],
   l1: [
     { label: "Answers, flags the gap", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Daniel,\n\nRenewals sit with HeartCount after year one, with Vector keeping a reduced share while you stay the account's first line of support.\n\nI don't have our earlier thread in front of me — if someone on my side already agreed different terms, send that note over and I'll honour it.\n\nEllen" },
+      text: "Hi Daniel,\n\nRenewals sit with HeartCount after year one, with Vector keeping a reduced share while you stay the account's first line of support.\n\nI don't have our earlier thread in front of me. If someone on my side already agreed different terms, send that note over and I'll honour it.\n\nEllen" },
     { label: "Buys time", tone: "#e8e2f8", toneText: "#54459b",
       text: "Hi Daniel,\n\nGood question, and I want to give you the answer that survives contact with our legal team rather than the fast one.\n\nGive me until Thursday. Short version: we expect to own renewals, you keep a share while you're first-line support.\n\nEllen" }
   ],
   l2: [
     { label: "Re-establishes context", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Renata,\n\nGood to hear from you.\n\nSo I pick this up correctly — which team were we scoping the pilot for, and roughly what headcount? Porto was a good evening and I'd rather check than guess.\n\nSeptember is still workable if we confirm scope in the next two weeks.\n\nEllen" },
+      text: "Hi Renata,\n\nGood to hear from you.\n\nSo I pick this up correctly, which team were we scoping the pilot for, and roughly what headcount? Porto was a good evening and I'd rather check than guess.\n\nSeptember is still workable if we confirm scope in the next two weeks.\n\nEllen" },
     { label: "Short and neutral", tone: "#e8e2f8", toneText: "#54459b",
       text: "Hi Renata,\n\nThanks for following up.\n\nSeptember could work. Can you send a line on scope and headcount so I can check it against our onboarding calendar?\n\nEllen" }
   ]
@@ -191,77 +191,77 @@ const MEETINGS = [
     title: "Q2 renewal terms", name: "Marcus Delaney", org: "Northwind Logistics",
     initials: "MD", av: "linear-gradient(135deg,#cfe2f7,#b6cdf0)",
     ended: "Ended 11:42 · 12 min ago", mins: 12, of: 30, mailbox: "partnerships@heartcount.com",
-    note: "Drafting starts on its own the moment a transcript lands, or 30 minutes after the call ends — whichever comes first.",
+    note: "Drafting starts on its own the moment a transcript lands, or 30 minutes after the call ends, whichever comes first.",
     subject: "Q2 renewal terms"
   },
   {
     id: "m2", meeting: true, state: "found", tool: "Optiverse",
-    title: "Intro call — engagement survey rollout", name: "Priya Raghavan", org: "Aster Health Group",
+    title: "Intro call: engagement survey rollout", name: "Priya Raghavan", org: "Aster Health Group",
     initials: "PR", av: "linear-gradient(135deg,#f7ddc4,#f3c9ae)",
     ended: "Ended 10:15 · 38 min call", mailbox: "ellen@heartcount.com",
     summary: "Priya's team wants a 6-week pilot across two clinical sites before the group-wide rollout. Procurement needs a security questionnaire before anything is signed.",
     actions: ["You: send the security questionnaire and the two-site pilot scope", "Priya: confirm which two clinical sites by Friday", "Both: hold Aug 12 for the readout"],
-    subject: "Intro call — engagement survey rollout"
+    subject: "Intro call: engagement survey rollout"
   },
   {
     id: "m3", meeting: true, state: "none",
     title: "Partner enablement sync", name: "Tom Okafor", org: "Meridian Consulting",
     initials: "TO", av: "linear-gradient(135deg,#cdeadd,#a9d8c4)",
     ended: "Ended 09:30 · 25 min call", mailbox: "partnerships@heartcount.com",
-    fallback: "No recording or transcript reached us. This draft is inferred from your last 10 messages with Tom — the revenue-share recap and the one-pager thread.",
+    fallback: "No recording or transcript reached us. This draft is inferred from your last 10 messages with Tom: the revenue-share recap and the one-pager thread.",
     subject: "Partner enablement sync"
   }
 ];
 
 MEETINGS.push({
   id: "m4", meeting: true, state: "found", tool: "Otter", pendingHours: 51,
-  title: "Renewal planning — Munich rollout", name: "Hannah Weiss", org: "Braithwaite Group",
+  title: "Renewal planning: Munich rollout", name: "Hannah Weiss", org: "Braithwaite Group",
   initials: "HW", av: "linear-gradient(135deg,#cfe2f7,#b6cdf0)",
   ended: "Ended Thu 16:05 · 42 min call", mailbox: "partnerships@heartcount.com",
   summary: "Hannah wants the Munich cohort renewed early so the budget lands in this fiscal year. She flagged that her CFO will ask for the week-six engagement delta before signing.",
   actions: ["You: send the week-six delta from the Munich pilot", "Hannah: get a renewal slot on the CFO's agenda", "Both: aim to sign before the fiscal close"],
-  subject: "Renewal planning — Munich rollout"
+  subject: "Renewal planning: Munich rollout"
 });
 
 const MEET_DRAFTS = {
   m2: [
     { label: "Action items first", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Priya,\n\nGood call. Recapping what we each own:\n\n• Me: security questionnaire + two-site pilot scope, with you today\n• You: confirm the two clinical sites by Friday\n• Both: Aug 12 held for the readout\n\nOn procurement — send me their questionnaire template and I'll fill it rather than send ours.\n\nEllen" },
+      text: "Hi Priya,\n\nGood call. Recapping what we each own:\n\n• Me: security questionnaire + two-site pilot scope, with you today\n• You: confirm the two clinical sites by Friday\n• Both: Aug 12 held for the readout\n\nOn procurement, send me their questionnaire template and I'll fill it rather than send ours.\n\nEllen" },
     { label: "Warm and short", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Priya,\n\nReally enjoyed that — the two-site approach is the right instinct, and it's how our best rollouts have started.\n\nSecurity questionnaire and pilot scope coming your way today. All I need back is the two site names by Friday.\n\nEllen" }
+      text: "Hi Priya,\n\nReally enjoyed that, the two-site approach is the right instinct, and it's how our best rollouts have started.\n\nSecurity questionnaire and pilot scope coming your way today. All I need back is the two site names by Friday.\n\nEllen" }
   ],
   m4: [
     { label: "Sends the delta", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Hannah,\n\nAttaching the week-six engagement delta from the Munich pilot — participation held at 87% and the manager-support score moved 11 points.\n\nThat should be what your CFO needs. If a renewal slot opens before fiscal close, I can turn paperwork around in two days.\n\nEllen" },
+      text: "Hi Hannah,\n\nAttaching the week-six engagement delta from the Munich pilot: participation held at 87% and the manager-support score moved 11 points.\n\nThat should be what your CFO needs. If a renewal slot opens before fiscal close, I can turn paperwork around in two days.\n\nEllen" },
     { label: "Pushes for the date", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Hannah,\n\nFollowing up on Thursday. The week-six delta is ready whenever you want it — but the thing that actually moves this is a date with your CFO.\n\nIs there a slot before fiscal close, or should we plan for the next cycle and stop pretending otherwise?\n\nEllen" }
+      text: "Hi Hannah,\n\nFollowing up on Thursday. The week-six delta is ready whenever you want it, but the thing that actually moves this is a date with your CFO.\n\nIs there a slot before fiscal close, or should we plan for the next cycle and stop pretending otherwise?\n\nEllen" }
   ],
   m3: [
     { label: "Cautious recap", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Tom,\n\nGood to sync. So we're aligned, here's what I took away — correct me where I've drifted:\n\n• Tiered share: 40% year one, 25% on renewal while you're first-line support\n• You circulate the co-branded one-pager internally\n• We revisit enablement once the first two referrals land\n\nEllen" },
+      text: "Hi Tom,\n\nGood to sync. So we're aligned, here's what I took away, correct me where I've drifted:\n\n• Tiered share: 40% year one, 25% on renewal while you're first-line support\n• You circulate the co-branded one-pager internally\n• We revisit enablement once the first two referrals land\n\nEllen" },
     { label: "Asks for their notes", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Tom,\n\nThanks for the time. My notes are thinner than I'd like — would you send me your version of the next steps so we're working from one list?\n\nWhat I have: revised tiering agreed in principle, one-pager going internal, enablement revisited after the first two referrals.\n\nEllen" }
+      text: "Hi Tom,\n\nThanks for the time. My notes are thinner than I'd like, would you send me your version of the next steps so we're working from one list?\n\nWhat I have: revised tiering agreed in principle, one-pager going internal, enablement revisited after the first two referrals.\n\nEllen" }
   ]
 };
 
 const FU_DRAFTS = {
   f1: [
     { label: "One-line bump", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Felix,\n\nNudging this one gently — still keen on the intro to your Nordics HR lead if the offer stands.\n\nIf it's easier, say the word and I'll send two lines you can forward as-is.\n\nEllen" },
+      text: "Hi Felix,\n\nNudging this one gently, still keen on the intro to your Nordics HR lead if the offer stands.\n\nIf it's easier, say the word and I'll send two lines you can forward as-is.\n\nEllen" },
     { label: "Gives him an out", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Felix,\n\nFollowing up on the Nordics intro — no pressure at all if the timing is wrong or the relationship isn't warm enough to trade on.\n\nIf that's the case, just tell me and I'll go the direct route instead. Either answer is a good answer.\n\nEllen" }
+      text: "Hi Felix,\n\nFollowing up on the Nordics intro, no pressure at all if the timing is wrong or the relationship isn't warm enough to trade on.\n\nIf that's the case, just tell me and I'll go the direct route instead. Either answer is a good answer.\n\nEllen" }
   ],
   f2: [
     { label: "Asks about the review", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Daniel,\n\nYour leadership review was last week — did the revised tiering land, or did it raise new questions?\n\nHappy to join a 20-minute call with whoever pushed back rather than trade documents.\n\nEllen" },
+      text: "Hi Daniel,\n\nYour leadership review was last week, did the revised tiering land, or did it raise new questions?\n\nHappy to join a 20-minute call with whoever pushed back rather than trade documents.\n\nEllen" },
     { label: "Sets a decision date", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Daniel,\n\nChecking in on the reseller terms. I'd like to either get this signed this month or park it until Q4 so neither of us is carrying it half-open.\n\nCan you tell me which is realistic? If it's Q4 that's genuinely fine — I'll stop chasing and diary it.\n\nEllen" }
+      text: "Hi Daniel,\n\nChecking in on the reseller terms. I'd like to either get this signed this month or park it until Q4 so neither of us is carrying it half-open.\n\nCan you tell me which is realistic? If it's Q4 that's genuinely fine, I'll stop chasing and diary it.\n\nEllen" }
   ],
   f3: [
     { label: "Flags the closing window", tone: "#dcf0e6", toneText: "#2b7355",
-      text: "Hi Renata,\n\nQuick follow-up on the pilot pricing. Our September onboarding slots close in about a week, so I wanted to flag it rather than let the date pass quietly.\n\nIf September is no longer realistic, October works too — just let me know which to hold.\n\nEllen" },
+      text: "Hi Renata,\n\nQuick follow-up on the pilot pricing. Our September onboarding slots close in about a week, so I wanted to flag it rather than let the date pass quietly.\n\nIf September is no longer realistic, October works too, just let me know which to hold.\n\nEllen" },
     { label: "Short and low-pressure", tone: "#e8e2f8", toneText: "#54459b",
-      text: "Hi Renata,\n\nJust making sure the pricing note reached you — inboxes being inboxes.\n\nNo rush on a decision. A one-line \"still interested\" or \"not this year\" is all I need.\n\nEllen" }
+      text: "Hi Renata,\n\nJust making sure the pricing note reached you, inboxes being inboxes.\n\nNo rush on a decision. A one-line \"still interested\" or \"not this year\" is all I need.\n\nEllen" }
   ],
   f4: [
     { label: "Names the blocker", tone: "#dcf0e6", toneText: "#2b7355",
@@ -301,7 +301,7 @@ const state = {
   feedbackNotes: {},
   feedbackTagsMap: {},
   feedbackPopup: null,
-  sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true, mcp: false },
+  sections: { lowConf: true, sent: true, dismissed: true, followUp: true, meetings: true, mcp: false, vipSuggestions: true },
   dismissedIds: ["x1", "x2"],
   inboxOpen: true,
   activeMailbox: DEFAULT_MAILBOX,
@@ -329,10 +329,18 @@ const state = {
   spin: 0,
   scanned: "2 min ago",
   mcpTokenVisible: false,
-  mcpToken: null
+  mcpToken: null,
+  vips: [],
+  vipsLoaded: false,
+  vipInput: "",
+  vipSuggestions: [],
+  vipSuggestLoading: false,
+  dismissedSelected: [],
+  confirmDeleteDismissed: false
 };
 
 let toastTimer = null;
+let vipSuggestAbort = null;
 
 // ---------------------------------------------------------------------------
 // CORE STATE HELPERS (ported 1:1 from Component methods)
@@ -512,7 +520,7 @@ function applyCategoryMove(id, newStatus, item) {
     body: JSON.stringify({ status: newStatus })
   }).catch(err => {
     console.error("Failed to save category move", err);
-    flash("Couldn't save that move — refresh and try again");
+    flash("Couldn't save that move, refresh and try again");
     renderAll();
   });
 }
@@ -553,7 +561,7 @@ function persistFollowupStatus(item, status) {
     body: JSON.stringify(body)
   }).catch(err => {
     console.error("Failed to save follow-up status", err);
-    flash("Couldn't save — refresh and try again");
+    flash("Couldn't save, refresh and try again");
     renderAll();
   });
 }
@@ -590,7 +598,7 @@ function persistMeetingStatus(item, meetingState) {
     body: JSON.stringify({ state: meetingState })
   }).catch(err => {
     console.error("Failed to save meeting status", err);
-    flash("Couldn't save — refresh and try again");
+    flash("Couldn't save, refresh and try again");
     renderAll();
   });
 }
@@ -698,7 +706,7 @@ function startDelayedSend(payload) {
       renderAll();
     }).catch(err => {
       console.error("Failed to send", err);
-      flash("Couldn't send — " + err.message);
+      flash("Couldn't send: " + err.message);
       renderAll();
     });
   }, 6000);
@@ -731,7 +739,7 @@ function meetVals(m) {
     // meeting implied a recap existed when the card had nothing below it yet.
     lead: m.summary || m.note || (m.state === "waiting"
       ? "Waiting to see if a transcript arrives before drafting a follow-up with " + m.name.split(" ")[0] + "."
-      : "Drafted from your message history with " + m.name.split(" ")[0] + " — check the recap below before sending."),
+      : "Drafted from your message history with " + m.name.split(" ")[0] + ", check the recap below before sending."),
     actions: (m.actions || []).map(a => ({ text: a })),
     hasActions: !!m.actions,
     isFallback: m.state === "none",
@@ -834,7 +842,7 @@ function renderVals() {
       id: cur.id, name: cur.name, org: cur.org, initials: cur.initials, av: cur.av,
       subject: cur.subject, mailbox: cur.mailbox, time: cur.time, body: cur.body || "",
       why: mtg
-        ? (cur.tool ? "The draft covers every action item from the call." : "Inferred context — read it before sending.")
+        ? (cur.tool ? "The draft covers every action item from the call." : "Inferred context, read it before sending.")
         : (fu ? cur.nudge : cur.why),
       whyIcon: mtg ? (cur.tool ? "ti-list-check" : "ti-history") : (fu ? "ti-bulb" : "ti-target-arrow"),
       isFu: fu,
@@ -847,7 +855,7 @@ function renderVals() {
       isMFallback: mtg && !cur.tool,
       ctxBadge: mtg
         ? (cur.tool ? "Transcript summary · via " + cur.tool : "No transcript found · inferred from recent conversation history")
-        : (fu ? "Following up on — sent with no reply" : "Their message"),
+        : (fu ? "Following up on: sent with no reply" : "Their message"),
       ctxIcon: mtg ? (cur.tool ? "ti-file-text" : "ti-file-alert") : (fu ? "ti-send" : "ti-mail-opened"),
       metaLine: mtg
         ? cur.ended
@@ -858,10 +866,10 @@ function renderVals() {
       subhead: fu ? "Nothing sends until you press Send" : "Nothing sends until you press Send",
       sendLabel: mtg ? "Send follow-up note" : (fu ? "Send follow-up" : "Send reply"),
       instrPlaceholder: mtg
-        ? "Describe a different note — “shorter, confirm the Aug 12 readout only”"
+        ? "Describe a different note: “shorter, confirm the Aug 12 readout only”"
         : (fu
-          ? "Describe a different nudge — “warmer, mention the October slot, two lines max”"
-          : "Describe a different reply — “shorter, push the call to next week, no pricing”"),
+          ? "Describe a different nudge: “warmer, mention the October slot, two lines max”"
+          : "Describe a different reply: “shorter, push the call to next week, no pricing”"),
       dismissLabel: mtg ? "Skip this call · reversible" : (fu ? "Stop chasing · reversible" : "Not interested · reversible"),
       tierLabel: mtg ? mPill.label : (fu ? "No reply · " + cur.days + " business days" : tier.label),
       tierBg: mtg ? mPill.bg : (fu ? "#dce9fb" : tier.bg),
@@ -908,6 +916,15 @@ function renderVals() {
     lastScanned: s.scanned,
     scanning: s.scanning,
     scanProgress: s.scanProgress,
+    scanSteps: !s.scanProgress ? [] : (() => {
+      const { done, total } = s.scanProgress;
+      const steps = [];
+      for (let i = 0; i < total; i++) {
+        const label = (MAILBOXES[i] && MAILBOXES[i].address) || `Mailbox ${i + 1}`;
+        steps.push({ label, status: i < done ? "done" : i === done ? "active" : "pending" });
+      }
+      return steps;
+    })(),
     searchOpen: s.searchOpen,
     searchLoading: s.searchLoading,
     searchQuery: s.searchQuery,
@@ -963,6 +980,12 @@ function renderVals() {
     replyPromiseHours: s.replyPromiseHours,
     draftVoice: s.draftVoice,
     draftVoiceDraft: s.draftVoiceDraft,
+    vips: s.vips,
+    vipInput: s.vipInput,
+    vipSuggestions: s.vipSuggestions,
+    vipSuggestLoading: s.vipSuggestLoading,
+    vipSuggestOpen: s.sections.vipSuggestions,
+    vipSuggestChevron: s.sections.vipSuggestions ? "ti-chevron-up" : "ti-chevron-down",
 
     filters: defs.filter(d => d.key !== "priority" || s.view === "inbox").map(d => {
       const val = s.filterVals[d.key];
@@ -1096,7 +1119,7 @@ function renderVals() {
       const open = THREADS.filter(liveT);
       if (open.length === 0) return "Nothing is waiting on you. Drafts will appear here as new partner mail arrives.";
       const oldest = open.slice().sort((a, b) => hrs(b.waited) - hrs(a.waited))[0];
-      return oldest.name.split(" ")[0] + " at " + oldest.org + " has been waiting " + oldest.waited + ". Drafts are ready for every thread below — review, edit, send.";
+      return oldest.name.split(" ")[0] + " at " + oldest.org + " has been waiting " + oldest.waited + ". Drafts are ready for every thread below, review, edit, send.";
     })(),
     hasOpen: THREADS.filter(liveT).length > 0,
 
@@ -1167,6 +1190,10 @@ function renderVals() {
     dismissedCount: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length,
     hasDismissed: DISMISSED.length > 0,
     noDismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length === 0,
+    dismissedSelectedCount: s.dismissedSelected.length,
+    dismissedAllSelected: DISMISSED.filter(d => !mbF || d.mailbox === mbF).length > 0 &&
+      DISMISSED.filter(d => !mbF || d.mailbox === mbF).every(d => s.dismissedSelected.indexOf(d.id) >= 0),
+    confirmDeleteDismissed: s.confirmDeleteDismissed,
     dismissed: DISMISSED.filter(d => !mbF || d.mailbox === mbF).map(d => {
       // Dismissed items merge threads (origin needs_reply/low_confidence),
       // sent-follow-ups (origin "sent"), and meetings (origin "meeting") —
@@ -1176,6 +1203,7 @@ function renderVals() {
       return {
         id: d.id, name: d.name, subject: d.subject, meta: d.meta || "dismissed",
         kind: kind,
+        selected: s.dismissedSelected.indexOf(d.id) >= 0,
         ...feedbackColors(fb)
       };
     }),
@@ -1224,7 +1252,7 @@ function nl2body(str) {
   const text = str || "";
   if (text.length <= BODY_PREVIEW_LIMIT) return esc(text);
   return esc(text.slice(0, BODY_PREVIEW_LIMIT).trimEnd()) +
-    '<span style="color:#9aa1ac"> … (truncated — open in Gmail for the full message)</span>';
+    '<span style="color:#9aa1ac"> … (truncated, open in Gmail for the full message)</span>';
 }
 
 function avatar(av, initials, size) {
@@ -1323,12 +1351,6 @@ root.innerHTML = `
     </div>
   </header>
 
-  <div id="scanBanner" class="hidden" style="display:flex;align-items:center;gap:10px;padding:9px 24px;background:#f1f7fd;border-bottom:1px solid #d9ebf9">
-    <span id="scanBannerText" style="font-size:12px;font-weight:700;color:#0b6fb8">Scanning your inbox…</span>
-    <div class="scan-bar-track" style="flex:1;max-width:220px;height:5px;border-radius:999px">
-      <div id="scanBarFill" class="scan-bar-fill" style="height:5px;border-radius:999px"></div>
-    </div>
-  </div>
 
   <main id="mainArea" style="flex:1">
     <div id="view-home" class="view-container"></div>
@@ -1351,6 +1373,8 @@ root.innerHTML = `
 
 <div id="confirmSendRoot"></div>
 <div id="confirmRescanRoot"></div>
+<div id="confirmDeleteDismissedRoot"></div>
+<div id="scanModalRoot"></div>
 <div id="feedbackPopupRoot"></div>
 `;
 
@@ -1379,24 +1403,6 @@ function renderShell(v) {
   document.getElementById("filtersRow").classList.toggle("hidden", !v.showFilters);
   document.getElementById("mainArea").style.padding = v.mainPad;
   document.getElementById("bottomNav").classList.toggle("hidden", !v.isMobile);
-  document.getElementById("scanBanner").classList.toggle("hidden", !v.scanning);
-  {
-    const fill = document.getElementById("scanBarFill");
-    const text = document.getElementById("scanBannerText");
-    if (v.scanProgress) {
-      const pct = v.scanProgress.total > 0 ? Math.round((v.scanProgress.done / v.scanProgress.total) * 100) : 0;
-      fill.style.animation = "none";
-      fill.style.width = pct + "%";
-      text.textContent = v.scanProgress.done >= v.scanProgress.total
-        ? "Finishing up…"
-        : `Scanning mailbox ${v.scanProgress.done + 1} of ${v.scanProgress.total}…`;
-    } else {
-      fill.style.animation = "";
-      fill.style.width = "";
-      text.textContent = "Scanning your inbox…";
-    }
-  }
-
   // ----- scope pill -----
   document.getElementById("scopeLabel").textContent = v.scopeLabel;
   document.getElementById("scopeNote").textContent = v.scopeNote;
@@ -2081,9 +2087,21 @@ function renderDismissed(v) {
     </div>
     <div class="expand-wrap${v.dismissedOpen ? " expand-wrap--open" : ""}">
       <div class="expand-inner">
+        ${v.hasDismissed ? `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:0 2px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" data-action="toggleSelectAllDismissed" ${v.dismissedAllSelected ? "checked" : ""} style="width:16px;height:16px;accentColor:#13161c">
+            <span style="font-size:12px;font-weight:700;color:#5d6470">Select all</span>
+          </label>
+          ${v.dismissedSelectedCount > 0 ? `
+          <button data-action="confirmDeleteDismissedSelected" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 13px;border:1px solid #f3c9c9;border-radius:999px;background:#fdf3f3;font-size:11.5px;font-weight:700;color:#c0392b;cursor:pointer">
+            <i class="ti ti-trash" style="font-size:13px"></i>Delete ${v.dismissedSelectedCount} selected
+          </button>` : ""}
+        </div>` : ""}
         <div style="display:flex;flex-direction:column;gap:7px">
           ${v.dismissed.map(d => `
           <div style="display:flex;align-items:center;gap:12px;background:#fbfbfc;border:1px solid #f0f1f4;border-radius:14px;padding:10px 14px">
+            <input type="checkbox" data-action="toggleSelectDismissed" data-id="${d.id}" ${d.selected ? "checked" : ""} style="flex:none;width:16px;height:16px;accentColor:#13161c">
             <i class="ti ti-mail-off" style="font-size:15px;color:#c3c8d1;flex:none"></i>
             <div style="flex:1;min-width:0">
               <p style="margin:0;font-size:13px;font-weight:600;color:#5d6470;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name)} · ${esc(d.subject)}</p>
@@ -2102,6 +2120,66 @@ function renderDismissed(v) {
           `).join("")}
           ${v.noDismissed ? `<p style="margin:0;font-size:12.5px;color:#a7adb8">Nothing dismissed yet.</p>` : ""}
         </div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// Full-screen "processing" modal replacing the old thin top banner — same
+// per-mailbox progress stream (see scanAndLoad), just presented as a real
+// checklist instead of a single bar, since a bar alone reads as frozen for
+// the long stretch between mailbox ticks with nothing else to look at.
+function renderScanModal(v) {
+  const el = document.getElementById("scanModalRoot");
+  if (!v.scanning) {
+    el.innerHTML = "";
+    return;
+  }
+  const pct = v.scanProgress && v.scanProgress.total > 0
+    ? Math.round((v.scanProgress.done / v.scanProgress.total) * 100)
+    : 0;
+  const barWidth = v.scanProgress ? pct + "%" : "30%";
+  const barAnimation = v.scanProgress ? "scan-bar-pulse 1.4s ease-in-out infinite" : "scan-bar-sweep 1.1s ease-in-out infinite";
+  el.innerHTML = `
+  <div style="position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.5);padding:20px">
+    <div style="background:#fff;border-radius:22px;padding:32px 30px;max-width:400px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35);text-align:center">
+      <div style="width:60px;height:60px;margin:0 auto 18px;border-radius:17px;background:linear-gradient(135deg,#0b8ee8,#f08a20);display:flex;align-items:center;justify-content:center">
+        <i class="ti ti-mail-check" style="font-size:26px;color:#fff"></i>
+      </div>
+      <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;letter-spacing:-.3px;color:#13161c">Scanning your inbox</h3>
+      <div class="scan-bar-track" style="height:8px;border-radius:999px;margin-bottom:10px">
+        <div class="scan-bar-fill" style="height:8px;border-radius:999px;width:${barWidth};animation:${barAnimation}"></div>
+      </div>
+      <p style="margin:0 0 20px;font-size:13.5px;font-weight:800;color:#0b8ee8">${v.scanProgress ? pct + "% complete" : "Getting started…"}</p>
+      ${v.scanSteps.length > 0 ? `
+      <div style="display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:18px">
+        ${v.scanSteps.map(step => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="width:8px;height:8px;flex:none;border-radius:999px;background:${step.status === "pending" ? "#dfe3e9" : "#0b8ee8"};${step.status === "active" ? "animation:scan-bar-pulse 1.1s ease-in-out infinite" : ""}"></span>
+          <span style="font-size:13px;font-weight:600;color:${step.status === "pending" ? "#a7adb8" : "#3a404a"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(step.label)}</span>
+        </div>`).join("")}
+      </div>` : ""}
+      <p style="margin:0;font-size:12px;font-weight:600;color:#9aa1ac">Classifying threads and drafting replies, this can take a moment.</p>
+    </div>
+  </div>
+  `;
+}
+
+function renderConfirmDeleteDismissedModal(v) {
+  const el = document.getElementById("confirmDeleteDismissedRoot");
+  if (!v.confirmDeleteDismissed) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.45);padding:20px">
+    <div style="background:#fff;border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35)">
+      <h3 style="margin:0 0 8px;font-size:16px;font-weight:800;letter-spacing:-.2px">Delete ${v.dismissedSelectedCount} dismissed item${v.dismissedSelectedCount === 1 ? "" : "s"}?</h3>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.55;color:#5d6470">This permanently removes them. Unlike Restore, this can't be undone.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button data-action="cancelDeleteDismissed" class="hover-pill-btn-color" style="height:38px;padding:0 16px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:#40464f;cursor:pointer">Cancel</button>
+        <button data-action="confirmDeleteDismissedYes" class="hover-dark-btn" style="height:38px;padding:0 18px;border:0;border-radius:999px;background:#c0392b;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">Delete</button>
       </div>
     </div>
   </div>
@@ -2322,7 +2400,7 @@ function renderSettings(v) {
     <span style="width:36px;height:36px;flex:none;border-radius:11px;background:linear-gradient(135deg,#0b8ee8,#f08a20);display:flex;align-items:center;justify-content:center"><i class="ti ti-plus" style="font-size:17px;color:#fff"></i></span>
     <span style="flex:1">
       <span style="display:block;font-size:13.5px;font-weight:700;color:#13161c">Add mailbox</span>
-      <span style="display:block;margin-top:2px;font-size:11.5px;font-weight:500;color:#9aa1ac">Connect any Google account — personal, shared or alias. No limit on how many.</span>
+      <span style="display:block;margin-top:2px;font-size:11.5px;font-weight:500;color:#9aa1ac">Connect any Google account: personal, shared or alias. No limit on how many.</span>
     </span>
     <i class="ti ti-arrow-right" style="font-size:16px;color:#9aa1ac"></i>
   </button>
@@ -2367,10 +2445,70 @@ function renderSettings(v) {
     </div>
   </div>
 
+  <div style="margin-bottom:16px">
+    <h2 style="margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.4px">VIP senders</h2>
+    <p style="margin:0;font-size:13px;color:#5d6470">Threads from these people always show as needing a reply, regardless of how the AI would otherwise classify them.</p>
+  </div>
+
+  <div style="background:#fff;border:1px solid #eff0f3;border-radius:20px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.04);margin-bottom:34px">
+    ${v.vips.length === 0
+      ? `<p style="margin:0 0 16px;font-size:13px;color:#9aa1ac">No VIPs yet, add someone below, or pull suggestions from your recent inbox activity.</p>`
+      : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          ${v.vips.map(p => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #f2f3f6;border-radius:12px">
+              ${avatar(p.av, p.initials, 32)}
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#13161c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name || p.address)}</div>
+                ${p.name ? `<div style="font-size:11.5px;font-weight:500;color:#9aa1ac">${esc(p.address)}</div>` : ""}
+              </div>
+              <button data-action="removeVip" data-id="${esc(p.id)}" aria-label="Remove VIP" class="hover-restore" style="flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #e5e8ed;border-radius:999px;background:#fff;cursor:pointer">
+                <i class="ti ti-x" style="font-size:14px;color:#9aa1ac"></i>
+              </button>
+            </div>`).join("")}
+        </div>`}
+
+    <div style="display:flex;gap:8px">
+      <input id="vipAddInput" type="email" placeholder="Add by email address" value="${esc(v.vipInput)}" style="flex:1;height:38px;border:1px solid #eceef1;border-radius:11px;background:#f7f8fa;padding:0 13px;font-size:12.5px;font-weight:600;color:#13161c;outline:none">
+      <button data-action="addVipManual" class="hover-dark-btn" style="flex:none;height:38px;padding:0 16px;border:0;border-radius:999px;background:#13161c;color:#fff;font-size:12px;font-weight:700;cursor:pointer">Add</button>
+    </div>
+
+    ${v.vipSuggestions.length
+      ? `<div style="margin-top:18px;padding-top:16px;border-top:1px solid #f2f3f6">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:${v.vipSuggestOpen ? "10px" : "0"}">
+            <p style="margin:0;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Suggested from your inbox</p>
+            <button data-action="toggleSection" data-key="vipSuggestions" aria-label="${v.vipSuggestOpen ? "Collapse" : "Expand"}" style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer" class="hover-pill-btn">
+              <i class="ti ${v.vipSuggestChevron}" style="font-size:14px;color:#40464f"></i>
+            </button>
+          </div>
+          <div class="expand-wrap${v.vipSuggestOpen ? " expand-wrap--open" : ""}">
+            <div class="expand-inner">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                ${v.vipSuggestions.map(c => `
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #f2f3f6;border-radius:12px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13px;font-weight:700;color:#13161c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name || c.address)}</div>
+                      <div style="font-size:11.5px;font-weight:500;color:#9aa1ac">${c.sentCount} sent · ${c.receivedCount} received</div>
+                    </div>
+                    <button data-action="addVipSuggestion" data-address="${esc(c.address)}" data-name="${esc(c.name || "")}" class="hover-restore" style="flex:none;height:30px;padding:0 13px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:11.5px;font-weight:700;color:#13161c;cursor:pointer">+ Add</button>
+                  </div>`).join("")}
+              </div>
+            </div>
+          </div>
+        </div>`
+      : v.vipSuggestLoading
+        ? `<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+            <span style="flex:1;display:flex;align-items:center;justify-content:center;height:36px;border:1px dashed #dfe3e9;border-radius:11px;background:#fbfbfc;font-size:12px;font-weight:700;color:#5d6470">Scanning your inbox…</span>
+            <button data-action="stopVipSuggestions" style="flex:none;height:36px;padding:0 14px;border:1px solid #e5e8ed;border-radius:11px;background:#fff;font-size:12px;font-weight:700;color:#c0392b;cursor:pointer">Stop</button>
+          </div>`
+        : `<button data-action="loadVipSuggestions" class="hover-restore" style="width:100%;margin-top:16px;height:36px;border:1px dashed #dfe3e9;border-radius:11px;background:#fbfbfc;font-size:12px;font-weight:700;color:#5d6470;cursor:pointer">
+            Suggest contacts from my inbox
+          </button>`}
+  </div>
+
   <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px">
     <div>
       <h2 style="margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.4px">AI assistant connectors</h2>
-      <p style="margin:0;font-size:13px;color:#5d6470">Let an AI assistant query this dashboard directly — e.g. "did I reply to Marcus about the Q3 pricing?" — without opening the app.</p>
+      <p style="margin:0;font-size:13px;color:#5d6470">Let an AI assistant query this dashboard directly, e.g. "did I reply to Marcus about the Q3 pricing?", without opening the app.</p>
     </div>
     <button data-action="toggleSection" data-key="mcp" style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #eceef1;border-radius:999px;background:#fff;cursor:pointer" class="hover-pill-btn">
       <i class="ti ${v.mcpChevron}" style="font-size:16px;color:#40464f"></i>
@@ -2399,7 +2537,7 @@ function renderSettings(v) {
             <i class="ti ti-copy" style="font-size:15px;color:#9aa1ac"></i>
           </button>
         </div>
-        <p style="margin:6px 0 0;font-size:11px;font-weight:500;color:#9aa1ac">Add this as a custom connector in Claude (or another MCP client). A local URL only works for tools running on this same machine — deploy the app for Claude itself to reach it.</p>
+        <p style="margin:6px 0 0;font-size:11px;font-weight:500;color:#9aa1ac">Add this as a custom connector in Claude (or another MCP client). A local URL only works for tools running on this same machine, deploy the app for Claude itself to reach it.</p>
       </div>
       <div>
         <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#a7adb8;letter-spacing:.04em;text-transform:uppercase">Auth token</p>
@@ -2410,7 +2548,7 @@ function renderSettings(v) {
           </button>
           <button data-action="generateMcpToken" class="hover-restore" style="flex:none;height:38px;padding:0 15px;border:1px solid #e5e8ed;border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:#13161c;cursor:pointer;white-space:nowrap">Generate token</button>
         </div>
-        ${state.mcpToken ? `<p style="margin:6px 0 0;font-size:11px;font-weight:600;color:#a5561b">Copy this now — it won't be shown again. Regenerating replaces it.</p>` : ""}
+        ${state.mcpToken ? `<p style="margin:6px 0 0;font-size:11px;font-weight:600;color:#a5561b">Copy this now, it won't be shown again. Regenerating replaces it.</p>` : ""}
       </div>
     </div>
 
@@ -2463,7 +2601,7 @@ function renderConfirmRescanModal(v) {
   <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;background:rgba(15,18,24,.45);padding:20px">
     <div style="background:#fff;border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 24px 60px -12px rgba(16,24,40,.35)">
       <h3 style="margin:0 0 8px;font-size:16px;font-weight:800;letter-spacing:-.2px">Rescan your inbox now?</h3>
-      <p style="margin:0 0 20px;font-size:13px;line-height:1.55;color:#5d6470">Last scanned ${esc(v.lastScanned)}. This re-checks every connected mailbox for new mail — it can take a moment.</p>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.55;color:#5d6470">Last scanned ${esc(v.lastScanned)}. This re-checks every connected mailbox for new mail, it can take a moment.</p>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button data-action="cancelRescan" class="hover-pill-btn-color" style="height:38px;padding:0 16px;border:1px solid #eceef1;border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:#40464f;cursor:pointer">Cancel</button>
         <button data-action="confirmRescanYes" class="hover-dark-btn" style="height:38px;padding:0 18px;border:0;border-radius:999px;background:#13161c;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">Rescan</button>
@@ -2588,6 +2726,8 @@ function renderAll() {
   renderDismissed(v);
   renderConfirmSendModal();
   renderConfirmRescanModal(v);
+  renderConfirmDeleteDismissedModal(v);
+  renderScanModal(v);
   renderFeedbackPopupModal();
   renderSearchResults(v);
   renderSettings(v);
@@ -2637,6 +2777,10 @@ document.addEventListener("click", (e) => {
       state.drawer = false;
       state.openId = null;
       renderAll();
+      if (el.dataset.view === "settings" && !state.vipsLoaded) {
+        state.vipsLoaded = true;
+        loadVips();
+      }
       break;
 
     case "refresh":
@@ -2866,7 +3010,7 @@ document.addEventListener("click", (e) => {
           body: JSON.stringify({ feedback: p.val, tags: p.tags, note: p.note })
         }).catch(err => {
           console.error("Failed to save feedback", err);
-          flash("Couldn't save feedback — refresh and try again");
+          flash("Couldn't save feedback, refresh and try again");
         });
       }
       break;
@@ -2875,8 +3019,68 @@ document.addEventListener("click", (e) => {
     // ---------- Dismissed ----------
     case "restoreDismissed":
       restoreFromDismissed(el.dataset.id, el.dataset.name);
+      state.dismissedSelected = state.dismissedSelected.filter(id => id !== el.dataset.id);
       renderAll();
       break;
+
+    case "toggleSelectDismissed": {
+      const id = el.dataset.id;
+      state.dismissedSelected = state.dismissedSelected.indexOf(id) >= 0
+        ? state.dismissedSelected.filter(x => x !== id)
+        : state.dismissedSelected.concat([id]);
+      renderAll();
+      break;
+    }
+
+    case "toggleSelectAllDismissed": {
+      const mbF = state.filterVals.mailbox;
+      const visibleIds = DISMISSED.filter(d => !mbF || d.mailbox === mbF).map(d => d.id);
+      const allSelected = visibleIds.length > 0 && visibleIds.every(id => state.dismissedSelected.indexOf(id) >= 0);
+      state.dismissedSelected = allSelected ? [] : visibleIds;
+      renderAll();
+      break;
+    }
+
+    case "confirmDeleteDismissedSelected":
+      state.confirmDeleteDismissed = true;
+      renderAll();
+      break;
+
+    case "cancelDeleteDismissed":
+      state.confirmDeleteDismissed = false;
+      renderAll();
+      break;
+
+    case "confirmDeleteDismissedYes": {
+      const ids = state.dismissedSelected;
+      const items = DISMISSED.filter(d => ids.indexOf(d.id) >= 0).map(d => ({
+        id: d.id,
+        kind: d.origin === "sent" ? "followup" : d.origin === "meeting" ? "meeting" : "thread"
+      }));
+      state.confirmDeleteDismissed = false;
+      el.disabled = true;
+      fetch("/api/dismissed", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); })
+        .then(() => {
+          for (let i = DISMISSED.length - 1; i >= 0; i--) {
+            if (ids.indexOf(DISMISSED[i].id) >= 0) DISMISSED.splice(i, 1);
+          }
+          state.dismissedIds = state.dismissedIds.filter(id => ids.indexOf(id) < 0);
+          state.dismissedSelected = [];
+          flash(`${ids.length} dismissed item${ids.length === 1 ? "" : "s"} deleted`);
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to delete dismissed items", err);
+          flash("Couldn't delete, try again");
+          renderAll();
+        });
+      break;
+    }
 
     // ---------- Settings: Mailboxes ----------
     case "toggleScan": {
@@ -2916,7 +3120,7 @@ document.addEventListener("click", (e) => {
         })
         .catch(err => {
           console.error("Failed to remove mailbox", err);
-          flash("Couldn't remove that mailbox — try again");
+          flash("Couldn't remove that mailbox, try again");
           renderAll();
         });
       renderAll();
@@ -2930,7 +3134,7 @@ document.addEventListener("click", (e) => {
         .catch(err => {
           console.error("Sign out failed", err);
           el.disabled = false;
-          flash("Couldn't sign out — try again");
+          flash("Couldn't sign out, try again");
           renderAll();
         });
       break;
@@ -2974,7 +3178,7 @@ document.addEventListener("click", (e) => {
         .catch(err => {
           console.error("Failed to save profile", err);
           el.disabled = false;
-          flash("Couldn't save — try again");
+          flash("Couldn't save, try again");
           renderAll();
         });
       break;
@@ -2989,6 +3193,101 @@ document.addEventListener("click", (e) => {
       renderAll();
       break;
     }
+
+    // ---------- Settings: VIP senders ----------
+    case "addVipManual": {
+      const input = document.getElementById("vipAddInput");
+      const address = (input ? input.value : state.vipInput).trim();
+      if (!address || !address.includes("@")) { flash("Enter a valid email address"); renderAll(); break; }
+      el.disabled = true;
+      fetch("/api/senders/vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+        .then(data => {
+          state.vips = [data.vip, ...state.vips.filter(v => v.id !== data.vip.id)];
+          state.vipSuggestions = state.vipSuggestions.filter(c => c.address.toLowerCase() !== data.vip.address);
+          state.vipInput = "";
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to add VIP", err);
+          el.disabled = false;
+          flash("Couldn't add, try again");
+          renderAll();
+        });
+      break;
+    }
+
+    case "addVipSuggestion": {
+      const address = el.dataset.address;
+      const name = el.dataset.name;
+      el.disabled = true;
+      fetch("/api/senders/vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, name: name || undefined }),
+      })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+        .then(data => {
+          state.vips = [data.vip, ...state.vips.filter(v => v.id !== data.vip.id)];
+          state.vipSuggestions = state.vipSuggestions.filter(c => c.address.toLowerCase() !== data.vip.address);
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to add VIP", err);
+          el.disabled = false;
+          flash("Couldn't add, try again");
+          renderAll();
+        });
+      break;
+    }
+
+    case "removeVip": {
+      const id = el.dataset.id;
+      el.disabled = true;
+      fetch("/api/senders/vip/" + id, { method: "DELETE" })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); })
+        .then(() => {
+          state.vips = state.vips.filter(v => v.id !== id);
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Failed to remove VIP", err);
+          el.disabled = false;
+          flash("Couldn't remove, try again");
+          renderAll();
+        });
+      break;
+    }
+
+    case "loadVipSuggestions":
+      state.vipSuggestLoading = true;
+      renderAll();
+      vipSuggestAbort = new AbortController();
+      fetch("/api/senders/vip/suggestions", { signal: vipSuggestAbort.signal })
+        .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+        .then(data => {
+          state.vipSuggestions = data.suggestions;
+          state.vipSuggestLoading = false;
+          vipSuggestAbort = null;
+          renderAll();
+        })
+        .catch(err => {
+          state.vipSuggestLoading = false;
+          vipSuggestAbort = null;
+          if (err.name === "AbortError") { renderAll(); return; }
+          console.error("Failed to load VIP suggestions", err);
+          flash("Couldn't load suggestions, try again");
+          renderAll();
+        });
+      break;
+
+    case "stopVipSuggestions":
+      if (vipSuggestAbort) vipSuggestAbort.abort();
+      break;
 
     // ---------- Settings: AI assistant connectors ----------
     case "copyMcpUrl": {
@@ -3019,7 +3318,7 @@ document.addEventListener("click", (e) => {
         .catch(err => {
           console.error("Failed to generate MCP token", err);
           el.disabled = false;
-          flash("Couldn't generate a token — try again");
+          flash("Couldn't generate a token, try again");
           renderAll();
         });
       break;
@@ -3276,6 +3575,11 @@ document.addEventListener("input", (e) => {
     return;
   }
 
+  if (e.target && e.target.id === "vipAddInput") {
+    state.vipInput = e.target.value;
+    return;
+  }
+
   if (e.target && e.target.id === "feedbackPopupNoteInput") {
     // Same no-re-render-per-keystroke pattern as editDraft/instructionInput
     // above — "Save" reads this from state.feedbackPopup when clicked.
@@ -3295,6 +3599,9 @@ document.addEventListener("keydown", (e) => {
       state.searchResults = [];
       renderAll();
     }
+  }
+  if (e.target && e.target.id === "vipAddInput" && e.key === "Enter") {
+    document.querySelector('[data-action="addVipManual"]')?.click();
   }
 });
 
@@ -3434,13 +3741,23 @@ async function scanAndLoad() {
     }
   } catch (err) {
     console.error("Failed to load live dashboard data", err);
-    flash("Couldn't refresh — try again");
+    flash("Couldn't refresh, try again");
   } finally {
     state.scanning = false;
     state.scanProgress = null;
     scanInFlight = false;
     renderAll();
   }
+}
+
+function loadVips() {
+  fetch("/api/senders/vip")
+    .then(res => { if (!res.ok) throw new Error("Request failed"); return res.json(); })
+    .then(data => {
+      state.vips = data.vips;
+      renderAll();
+    })
+    .catch(err => console.error("Failed to load VIPs", err));
 }
 
 scanAndLoad();

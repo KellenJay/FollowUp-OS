@@ -91,7 +91,7 @@ const handler = createMcpHandler(
       "list_needs_reply",
       {
         title: "List threads needing a reply",
-        description: "The current needs-reply queue — threads a real reply is owed on.",
+        description: "The current needs-reply queue: threads a real reply is owed on.",
         inputSchema: z.object({}),
       },
       async (_args, ctx) => {
