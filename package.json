@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "eval:golden": "tsx scripts/eval/run-golden.ts",
-    "eval:excel": "tsx scripts/eval/generate-excel.ts"
+    "eval:golden": "tsx --env-file=.env.local scripts/eval/run-golden.ts",
+    "eval:live": "tsx --env-file=.env.local scripts/eval/run-live.ts",
+    "eval:excel": "tsx scripts/eval/generate-excel.ts",
+    "report": "tsx --env-file=.env.local scripts/report/build-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
