@@ -78,6 +78,37 @@ async function failureRate() {
   console.log(`  Transcript summarization failures: ${badMeetings ?? 0} of ${totalMeetingDecisions ?? 0} (${meetingRate}%)`);
 }
 
+async function errorLogSummary() {
+  const supabase = supabaseServer();
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("error_log")
+    .select("source, will_retry")
+    .gte("created_at", since);
+
+  if (error) {
+    console.log(`  Could not read error_log: ${error.message}`);
+    return;
+  }
+  if (!data || data.length === 0) {
+    console.log("  No errors logged in the last 7 days — either nothing's failing, or the error_log migration hasn't run yet.");
+    return;
+  }
+
+  const bySource = new Map<string, { attempts: number; retried: number; gaveUp: number }>();
+  for (const row of data) {
+    const b = bySource.get(row.source) ?? { attempts: 0, retried: 0, gaveUp: 0 };
+    b.attempts += 1;
+    if (row.will_retry) b.retried += 1;
+    else b.gaveUp += 1;
+    bySource.set(row.source, b);
+  }
+
+  for (const [source, b] of bySource) {
+    console.log(`  ${source.padEnd(24)} failed_attempts=${b.attempts}  retried=${b.retried}  gave_up_terminally=${b.gaveUp}`);
+  }
+}
+
 async function feedbackSummary() {
   const supabase = supabaseServer();
   const tables = ["threads", "sent", "followups", "meetings"] as const;
@@ -156,13 +187,16 @@ async function main() {
   console.log("\n=== 2. Failure / fallback rate (all time) ===");
   await failureRate();
 
-  console.log("\n=== 3. Real user feedback (all time) ===");
+  console.log("\n=== 3. Failed attempts & retries (last 7 days) ===");
+  await errorLogSummary();
+
+  console.log("\n=== 4. Real user feedback (all time) ===");
   await feedbackSummary();
 
-  console.log("\n=== 4. Time to resolution ===");
+  console.log("\n=== 5. Time to resolution ===");
   await timeToResolution();
 
-  console.log("\n=== 5. Golden-eval quality scores (synthetic test cases, not real usage) ===");
+  console.log("\n=== 6. Golden-eval quality scores (synthetic test cases, not real usage) ===");
   goldenEvalSummary();
 
   fs.mkdirSync(RESULTS_DIR, { recursive: true });

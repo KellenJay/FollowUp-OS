@@ -261,6 +261,25 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ai_call_logs"]["Row"]>;
         Relationships: [];
       };
+      error_log: {
+        Row: {
+          id: string;
+          owner_id: string;
+          source: string;
+          attempt: number;
+          will_retry: boolean;
+          error_message: string;
+          error_status: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["error_log"]["Row"]> & {
+          owner_id: string;
+          source: string;
+          error_message: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["error_log"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

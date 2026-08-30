@@ -1,41 +1,7 @@
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { openaiClient, openaiModel } from "@/lib/openai/client";
-import { supabaseServer } from "@/lib/supabase/server";
-
-// Structured per-call line for Vercel's Runtime Logs/Observability (useful
-// for live tailing right after a scan), plus a row in ai_call_logs for a
-// permanent audit trail — Vercel's own log retention is a rolling window
-// (1 hour on Hobby, up to 30 days on paid Observability Plus) that eventually
-// deletes the data, not real storage. A logging failure here must never
-// break the actual AI call it's describing, so the insert is best-effort.
-async function logAiCall(ownerId: string, decisionPoint: string, model: string, startedAt: number, usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null | undefined) {
-  const latencyMs = Date.now() - startedAt;
-  console.log(JSON.stringify({
-    event: "ai_call",
-    decision_point: decisionPoint,
-    model,
-    latency_ms: latencyMs,
-    prompt_tokens: usage?.prompt_tokens ?? null,
-    completion_tokens: usage?.completion_tokens ?? null,
-    total_tokens: usage?.total_tokens ?? null,
-  }));
-
-  try {
-    const supabase = supabaseServer();
-    await supabase.from("ai_call_logs").insert({
-      owner_id: ownerId,
-      decision_point: decisionPoint,
-      model,
-      latency_ms: latencyMs,
-      prompt_tokens: usage?.prompt_tokens ?? null,
-      completion_tokens: usage?.completion_tokens ?? null,
-      total_tokens: usage?.total_tokens ?? null,
-    });
-  } catch (err) {
-    console.error("Failed to persist ai_call_logs row", err);
-  }
-}
+import { logAiCall, logFailure, withRetry } from "@/lib/ai-observability";
 
 const ClassifyAndDraftSchema = z.object({
   classification: z.enum(["needs_reply", "low_confidence"]),
@@ -109,14 +75,18 @@ ${thread.body.slice(0, 4000)}`;
     : SYSTEM_PROMPT;
 
   const startedAt = Date.now();
-  const completion = await client.chat.completions.parse({
-    model: openaiModel(),
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: zodResponseFormat(ClassifyAndDraftSchema, "classify_and_draft"),
-  });
+  const completion = await withRetry(
+    () =>
+      client.chat.completions.parse({
+        model: openaiModel(),
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: zodResponseFormat(ClassifyAndDraftSchema, "classify_and_draft"),
+      }),
+    (attempt, willRetry, err) => logFailure(ownerId, "classify_and_draft", attempt, willRetry, err)
+  );
   await logAiCall(ownerId, "classify_and_draft", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
@@ -182,14 +152,18 @@ Body of the sent message:
 ${message.body.slice(0, 4000)}`;
 
   const startedAt = Date.now();
-  const completion = await client.chat.completions.parse({
-    model: openaiModel(),
-    messages: [
-      { role: "system", content: FOLLOWUP_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: zodResponseFormat(FollowupRelevanceSchema, "followup_relevance"),
-  });
+  const completion = await withRetry(
+    () =>
+      client.chat.completions.parse({
+        model: openaiModel(),
+        messages: [
+          { role: "system", content: FOLLOWUP_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: zodResponseFormat(FollowupRelevanceSchema, "followup_relevance"),
+      }),
+    (attempt, willRetry, err) => logFailure(ownerId, "followup_relevance", attempt, willRetry, err)
+  );
   await logAiCall(ownerId, "followup_relevance", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
@@ -244,14 +218,18 @@ Transcript:
 ${input.transcriptBody.slice(0, 12000)}`;
 
   const startedAt = Date.now();
-  const completion = await client.chat.completions.parse({
-    model: openaiModel(),
-    messages: [
-      { role: "system", content: TRANSCRIPT_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: zodResponseFormat(TranscriptSummarySchema, "transcript_summary"),
-  });
+  const completion = await withRetry(
+    () =>
+      client.chat.completions.parse({
+        model: openaiModel(),
+        messages: [
+          { role: "system", content: TRANSCRIPT_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: zodResponseFormat(TranscriptSummarySchema, "transcript_summary"),
+      }),
+    (attempt, willRetry, err) => logFailure(ownerId, "transcript_summary", attempt, willRetry, err)
+  );
   await logAiCall(ownerId, "transcript_summary", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;
@@ -304,14 +282,18 @@ Recent email history with this contact (most relevant available):
 ${historyText}`;
 
   const startedAt = Date.now();
-  const completion = await client.chat.completions.parse({
-    model: openaiModel(),
-    messages: [
-      { role: "system", content: FALLBACK_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: zodResponseFormat(FallbackFollowupSchema, "fallback_followup"),
-  });
+  const completion = await withRetry(
+    () =>
+      client.chat.completions.parse({
+        model: openaiModel(),
+        messages: [
+          { role: "system", content: FALLBACK_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: zodResponseFormat(FallbackFollowupSchema, "fallback_followup"),
+      }),
+    (attempt, willRetry, err) => logFailure(ownerId, "fallback_followup", attempt, willRetry, err)
+  );
   await logAiCall(ownerId, "fallback_followup", openaiModel(), startedAt, completion.usage);
 
   const parsed = completion.choices[0]?.message.parsed;

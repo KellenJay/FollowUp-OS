@@ -4,6 +4,7 @@ import { scanInboxThreads, scanSentMessages, scanRecentHistoryWithContact, hasBe
 import { scanRecentMeetings } from "@/lib/google/calendar";
 import { loadSenderLookup, SenderLookup } from "@/lib/senders";
 import { classifyAndDraft, classifyFollowupRelevance, summarizeTranscript, draftFallbackFollowup } from "@/lib/openai/classify";
+import { logFailure } from "@/lib/ai-observability";
 
 // Strips diacritics so "Ellen Ivanović" (Workspace profile) matches "Ellen
 // Ivanovic" (a plain-ASCII display name on a different, e.g. personal,
@@ -78,8 +79,12 @@ export async function runScan(ownerId: string, onProgress?: ScanProgress) {
       summary[mailbox.address] = "ok";
     } catch (err) {
       // A single mailbox's auth/API failure shouldn't take down the whole
-      // scan — flag it for reconnect and keep going with the rest.
+      // scan — flag it for reconnect and keep going with the rest. Not
+      // retried here (a bad/expired token needs a real reconnect, not
+      // another attempt), but still logged so there's a history beyond the
+      // mailbox's current "reauth" state, which only ever shows the latest.
       await supabase.from("mailboxes").update({ state: "reauth" }).eq("id", mailbox.id);
+      await logFailure(ownerId, "mailbox_scan", 1, false, err);
       summary[mailbox.address] = `error: ${(err as Error).message}`;
     }
     i += 1;
