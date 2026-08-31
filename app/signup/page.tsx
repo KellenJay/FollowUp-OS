@@ -33,6 +33,7 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -45,7 +46,7 @@ export default function SignupPage() {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, inviteCode }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -149,6 +150,14 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                style={input}
+              />
+              <input
+                type="text"
+                placeholder="Invite code"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
                 style={input}
               />
               {error && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{error}</p>}

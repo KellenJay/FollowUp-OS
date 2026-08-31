@@ -7,6 +7,7 @@ const SignupSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
+  inviteCode: z.string().trim().min(1),
 });
 
 export async function POST(request: Request) {
@@ -16,7 +17,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid signup details" }, { status: 400 });
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, inviteCode } = parsed.data;
+
+  const expectedCode = process.env.SIGNUP_INVITE_CODE;
+  if (!expectedCode || inviteCode !== expectedCode) {
+    return NextResponse.json({ error: "Invalid invite code" }, { status: 403 });
+  }
 
   try {
     const passwordHash = await hashPassword(password);
